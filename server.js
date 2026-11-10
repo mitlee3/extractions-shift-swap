@@ -1,4 +1,5 @@
 const crypto = require('node:crypto');
+const path = require('node:path');
 const express = require('express');
 const cookieSession = require('cookie-session');
 const { OAuth2Client } = require('google-auth-library');
@@ -29,11 +30,23 @@ app.use(cookieSession({
   maxAge: 7 * 24 * 60 * 60 * 1000,
 }));
 
+// Public assets (CSS, JS, images)
+app.use('/assets', express.static(path.join(__dirname, 'public')));
+
 function escapeHtml(value = '') {
   return String(value).replace(/[&<>"']/g, (char) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   })[char]);
 }
+
+function requireUser(req, res, next) {
+  if (!req.session.user) return res.redirect('/');
+  next();
+}
+
+app.get('/dashboard', requireUser, (req, res) => {
+  res.sendFile(path.join(__dirname, 'views', 'dashboard.html'));
+});
 
 app.get('/', (req, res) => {
   res.type('html').send(req.session.user
@@ -77,6 +90,7 @@ app.get('/auth/google/callback', async (req, res, next) => {
       idToken: tokens.id_token,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
+
     const profile = ticket.getPayload();
     if (!profile || profile.nonce !== expectedNonce || !profile.email_verified ||
         !profile.email ||
@@ -85,14 +99,14 @@ app.get('/auth/google/callback', async (req, res, next) => {
       return res.status(403).send('Use a verified Gmail or natera.com account to sign in.');
     }
 
-    // Keep only identity details in the signed cookie; never store OAuth tokens there.
     req.session.user = {
       id: profile.sub,
       email: profile.email,
       name: profile.name || profile.email,
       picture: profile.picture || null,
     };
-    return res.redirect('/');
+
+    return res.redirect('/dashboard');
   } catch (err) {
     return next(err);
   }
@@ -108,7 +122,6 @@ app.post('/logout', (req, res) => {
   res.redirect('/');
 });
 
-// Also allow a browser link from the starter page to sign out.
 app.get('/logout', (req, res) => {
   req.session = null;
   res.redirect('/');

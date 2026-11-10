@@ -38,7 +38,7 @@ function escapeHtml(value = '') {
 app.get('/', (req, res) => {
   res.type('html').send(req.session.user
     ? `<main><h1>Signed in</h1><p>${escapeHtml(req.session.user.email)}</p><p><a href="/logout">Sign out</a></p></main>`
-    : '<main><h1>Shift Swap</h1><p><a href="/auth/google">Sign in with Google</a></p></main>');
+    : '<main><h1>Shift Swap</h1><p>Use your Gmail or natera.com account.</p><p><a href="/auth/google">Sign in with Google</a></p></main>');
 });
 
 app.get('/auth/google', (req, res) => {
@@ -79,8 +79,10 @@ app.get('/auth/google/callback', async (req, res, next) => {
     });
     const profile = ticket.getPayload();
     if (!profile || profile.nonce !== expectedNonce || !profile.email_verified ||
-        !profile.email || !profile.email.toLowerCase().endsWith('@gmail.com')) {
-      return res.status(403).send('Use a verified Gmail account to sign in.');
+        !profile.email ||
+        (!profile.email.toLowerCase().endsWith('@gmail.com') &&
+         !profile.email.toLowerCase().endsWith('@natera.com'))) {
+      return res.status(403).send('Use a verified Gmail or natera.com account to sign in.');
     }
 
     // Keep only identity details in the signed cookie; never store OAuth tokens there.

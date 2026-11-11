@@ -37,22 +37,24 @@
           <p class="section-kicker">Overview</p>
           <h3>Shift swap activity</h3>
         </div>
-        <button class="primary-btn">Request swap</button>
+        <button class="primary-btn" type="button">Request swap</button>
       </div>
 
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Employee</th>
-              <th>Current shift</th>
-              <th>Desired shift</th>
+              <th>Requesting employee</th>
+              <th>Offering employee</th>
+              <th>Requesting off</th>
+              <th>Requesting on</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody id="swap-table-body"></tbody>
         </table>
       </div>
+      <p id="requests-message" role="status" aria-live="polite">Loading shift swaps…</p>
     </section>
   </main>
 </body>

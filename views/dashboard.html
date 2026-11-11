@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Shift Swap Dashboard</title>
   <link rel="stylesheet" href="/assets/dashboard.css">
+  <script src="/assets/dashboard.js" defer></script>
 </head>
 <body>
   <header class="page-header">
@@ -36,97 +37,23 @@
           <p class="section-kicker">Overview</p>
           <h3>Shift swap activity</h3>
         </div>
+        <button class="primary-btn">Request swap</button>
       </div>
 
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Requesting employee</th>
-              <th>Offering employee</th>
-              <th>Requesting off</th>
-              <th>Requesting on</th>
+              <th>Employee</th>
+              <th>Current shift</th>
+              <th>Desired shift</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody id="swap-table-body"></tbody>
         </table>
       </div>
-      <p id="load-error" role="alert" hidden>Could not load shift swap requests. Please refresh the page.</p>
     </section>
   </main>
-
-  <script>
-    function badgeClass(status) {
-      switch (status.toLowerCase()) {
-        case 'approved': return 'badge-approved';
-        case 'pending':
-        case 'requesting': return 'badge-pending';
-        case 'rejected': return 'badge-rejected';
-        default: return 'badge-neutral';
-      }
-    }
-
-    function formatDate(value) {
-      if (!value) return '—';
-      const date = new Date(`${value}`);
-      return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
-    }
-
-    function renderTable(requests) {
-      const tbody = document.querySelector('#swap-table-body');
-      tbody.replaceChildren();
-
-      for (const request of requests) {
-        const row = document.createElement('tr');
-        const values = [
-          request.requester_name,
-          request.offering_name || '—',
-          formatDate(request.person_requesting_off),
-          formatDate(request.person_requesting_on),
-        ];
-        for (const value of values) {
-          const cell = document.createElement('td');
-          cell.textContent = value;
-          row.append(cell);
-        }
-
-        const statusCell = document.createElement('td');
-        const badge = document.createElement('span');
-        badge.className = `badge ${badgeClass(request.status)}`;
-        badge.textContent = request.status;
-        statusCell.append(badge);
-        row.append(statusCell);
-        tbody.append(row);
-      }
-
-      document.querySelector('#total-open').textContent = requests.length;
-      document.querySelector('#approved-count').textContent = requests.filter(r => r.status.toLowerCase() === 'approved').length;
-      document.querySelector('#pending-count').textContent = requests.filter(r => ['pending', 'requesting'].includes(r.status.toLowerCase())).length;
-    }
-
-    fetch('/me')
-      .then((response) => {
-        if (!response.ok) throw new Error('Sign-in required');
-        return response.json();
-      })
-      .then((user) => {
-        document.querySelector('#greeting').textContent = `Hello, ${user.name}`;
-      })
-      .catch(() => {
-        window.location.href = '/';
-      });
-
-    fetch('/api/shift-requests')
-      .then((response) => {
-        if (!response.ok) throw new Error('Could not load shift requests');
-        return response.json();
-      })
-      .then(renderTable)
-      .catch((error) => {
-        console.error(error);
-        document.querySelector('#load-error').hidden = false;
-      });
-  </script>
 </body>
 </html>

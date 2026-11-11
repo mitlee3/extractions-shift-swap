@@ -36,85 +36,73 @@
           <p class="section-kicker">Overview</p>
           <h3>Shift swap activity</h3>
         </div>
-        <button class="primary-btn">Request swap</button>
       </div>
 
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Employee</th>
-              <th>Current shift</th>
-              <th>Desired shift</th>
+              <th>Requesting employee</th>
+              <th>Offering employee</th>
+              <th>Requesting off</th>
+              <th>Requesting on</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody id="swap-table-body"></tbody>
         </table>
       </div>
+      <p id="load-error" role="alert" hidden>Could not load shift swap requests. Please refresh the page.</p>
     </section>
   </main>
 
   <script>
-    const requests = [
-      {
-        employee: 'Ava Johnson',
-        currentShift: 'Mon 7:00 AM – 3:00 PM',
-        desiredShift: 'Tue 3:00 PM – 11:00 PM',
-        status: 'Approved'
-      },
-      {
-        employee: 'Marcus Lee',
-        currentShift: 'Wed 11:00 AM – 7:00 PM',
-        desiredShift: 'Thu 7:00 AM – 3:00 PM',
-        status: 'Pending'
-      },
-      {
-        employee: 'Nina Patel',
-        currentShift: 'Fri 3:00 PM – 11:00 PM',
-        desiredShift: 'Sat 7:00 AM – 3:00 PM',
-        status: 'Rejected'
-      },
-      {
-        employee: 'Daniel Kim',
-        currentShift: 'Sun 7:00 AM – 3:00 PM',
-        desiredShift: 'Mon 3:00 PM – 11:00 PM',
-        status: 'Pending'
-      }
-    ];
-
     function badgeClass(status) {
       switch (status.toLowerCase()) {
-        case 'approved':
-          return 'badge-approved';
+        case 'approved': return 'badge-approved';
         case 'pending':
-          return 'badge-pending';
-        case 'rejected':
-          return 'badge-rejected';
-        default:
-          return 'badge-neutral';
+        case 'requesting': return 'badge-pending';
+        case 'rejected': return 'badge-rejected';
+        default: return 'badge-neutral';
       }
     }
 
-    function renderTable() {
+    function formatDate(value) {
+      if (!value) return '—';
+      const date = new Date(`${value}T00:00:00`);
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+    }
+
+    function renderTable(requests) {
       const tbody = document.querySelector('#swap-table-body');
+      tbody.replaceChildren();
 
-      tbody.innerHTML = requests.map((request) => `
-        <tr>
-          <td>${request.employee}</td>
-          <td>${request.currentShift}</td>
-          <td>${request.desiredShift}</td>
-          <td><span class="badge ${badgeClass(request.status)}">${request.status}</span></td>
-        </tr>
-      `).join('');
+      for (const request of requests) {
+        const row = document.createElement('tr');
+        const values = [
+          request.requester_name,
+          request.offering_name || '—',
+          formatDate(request.person_requesting_off),
+          formatDate(request.person_requesting_on),
+        ];
+        for (const value of values) {
+          const cell = document.createElement('td');
+          cell.textContent = value;
+          row.append(cell);
+        }
 
-      const totalOpen = requests.length;
-      const approvedCount = requests.filter(r => r.status === 'Approved').length;
-      const pendingCount = requests.filter(r => r.status === 'Pending').length;
+        const statusCell = document.createElement('td');
+        const badge = document.createElement('span');
+        badge.className = `badge ${badgeClass(request.status)}`;
+        badge.textContent = request.status;
+        statusCell.append(badge);
+        row.append(statusCell);
+        tbody.append(row);
+      }
 
-      document.querySelector('#total-open').textContent = totalOpen;
-      document.querySelector('#approved-count').textContent = approvedCount;
-      document.querySelector('#pending-count').textContent = pendingCount;
+      document.querySelector('#total-open').textContent = requests.length;
+      document.querySelector('#approved-count').textContent = requests.filter(r => r.status.toLowerCase() === 'approved').length;
+      document.querySelector('#pending-count').textContent = requests.filter(r => ['pending', 'requesting'].includes(r.status.toLowerCase())).length;
     }
 
     fetch('/me')
@@ -129,7 +117,16 @@
         window.location.href = '/';
       });
 
-    renderTable();
+    fetch('/api/shift-requests')
+      .then((response) => {
+        if (!response.ok) throw new Error('Could not load shift requests');
+        return response.json();
+      })
+      .then(renderTable)
+      .catch((error) => {
+        console.error(error);
+        document.querySelector('#load-error').hidden = false;
+      });
   </script>
 </body>
 </html>

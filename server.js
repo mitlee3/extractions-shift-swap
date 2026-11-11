@@ -3,6 +3,7 @@ const path = require('node:path');
 const express = require('express');
 const cookieSession = require('cookie-session');
 const { OAuth2Client } = require('google-auth-library');
+const { Pool } = require('pg');
 
 const requiredEnv = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'OAUTH_REDIRECT_URL', 'SESSION_SECRET'];
 for (const name of requiredEnv) {
@@ -16,10 +17,21 @@ const oauthClient = new OAuth2Client(
   process.env.GOOGLE_CLIENT_SECRET,
   process.env.OAUTH_REDIRECT_URL,
 );
+const db = process.env.DATABASE_URL
+  ? new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 10,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 5_000,
+  })
+  : null;
+
+if (db) db.on('error', (err) => console.error('Unexpected PostgreSQL pool error:', err));
 
 // Cloud Run terminates TLS before forwarding requests to the container.
 if (isProduction) app.set('trust proxy', 1);
 
+app.use(express.json());
 app.use(cookieSession({
   name: 'session',
   keys: [process.env.SESSION_SECRET],
@@ -41,6 +53,11 @@ function escapeHtml(value = '') {
 
 function requireUser(req, res, next) {
   if (!req.session.user) return res.redirect('/');
+  next();
+}
+
+function requireDatabase(req, res, next) {
+  if (!db) return res.status(503).json({ error: 'Database is not configured' });
   next();
 }
 
@@ -117,6 +134,28 @@ app.get('/me', (req, res) => {
   res.json(req.session.user);
 });
 
+app.get('/api/shift-requests', requireUser, requireDatabase, async (req, res, next) => {
+  try {
+    const result = await db.query(`
+      SELECT
+        swap.id,
+        swap.status,
+        swap.submitted_at,
+        swap.person_requesting_off,
+        swap.person_requesting_on,
+        requester.first_name || ' ' || requester.last_name AS requester_name,
+        offering.first_name || ' ' || offering.last_name AS offering_name
+      FROM "ShiftSwaps" AS swap
+      JOIN "User" AS requester ON requester.id = swap.person_requesting
+      LEFT JOIN "User" AS offering ON offering.id = swap.person_offering
+      ORDER BY swap.submitted_at DESC NULLS LAST, swap.id DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.post('/logout', (req, res) => {
   req.session = null;
   res.redirect('/');
@@ -129,8 +168,13 @@ app.get('/logout', (req, res) => {
 
 app.use((err, req, res, next) => {
   console.error('Request failed:', err);
-  res.status(500).send('Sign-in failed. Please try again later.');
+  if (res.headersSent) return next(err);
+  res.status(500).send('Request failed. Please try again later.');
 });
 
 const port = Number(process.env.PORT) || 8080;
 app.listen(port, '0.0.0.0', () => console.log(`Listening on ${port}`));
+
+process.on('SIGTERM', () => {
+  if (db) db.end().catch((err) => console.error('Error closing PostgreSQL pool:', err));
+});

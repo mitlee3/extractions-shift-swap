@@ -69,7 +69,7 @@
 
     function formatDate(value) {
       if (!value) return '—';
-      const date = new Date(`${value}T00:00:00`);
+      const date = new Date(`${value}`);
       return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
     }
 

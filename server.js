@@ -10,6 +10,19 @@ for (const name of requiredEnv) {
   if (!process.env[name]) throw new Error(`Missing required environment variable: ${name}`);
 }
 
+function configuredOptions(envName, defaults) {
+  const configured = process.env[envName];
+  return configured
+    ? configured.split(',').map((value) => value.trim()).filter(Boolean)
+    : defaults;
+}
+
+const profileOptions = {
+  positions: configuredOptions('PROFILE_POSITIONS', ['Extractionist', 'Lead', 'Supervisor', 'Manager']),
+  shiftNumbers: configuredOptions('PROFILE_SHIFT_NUMBERS', ['1', '2', '3']),
+  shiftDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+};
+
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
 const oauthClient = new OAuth2Client(
@@ -32,6 +45,7 @@ if (db) db.on('error', (err) => console.error('Unexpected PostgreSQL pool error:
 if (isProduction) app.set('trust proxy', 1);
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(cookieSession({
   name: 'session',
   keys: [process.env.SESSION_SECRET],
@@ -56,19 +70,48 @@ function requireUser(req, res, next) {
   next();
 }
 
+function requireProfile(req, res, next) {
+  if (!req.session.user) return res.redirect('/');
+  if (!req.session.user.profileComplete) return res.redirect('/profile');
+  next();
+}
+
 function requireDatabase(req, res, next) {
   if (!db) return res.status(503).json({ error: 'Database is not configured' });
   next();
 }
 
-app.get('/dashboard', requireUser, (req, res) => {
+function safeTokenEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function userFromRow(row, picture = null) {
+  return {
+    id: row.id,
+    email: row.email,
+    name: `${row.first_name} ${row.last_name}`.trim(),
+    picture,
+    profileComplete: true,
+  };
+}
+
+app.get('/dashboard', requireProfile, (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'dashboard.html'));
 });
 
+app.get('/profile', requireUser, (req, res) => {
+  if (req.session.user.profileComplete) return res.redirect('/dashboard');
+  res.sendFile(path.join(__dirname, 'views', 'profile.html'));
+});
+
 app.get('/', (req, res) => {
-  res.type('html').send(req.session.user
-    ? `<main><h1>Signed in</h1><p>${escapeHtml(req.session.user.email)}</p><p><a href="/logout">Sign out</a></p></main>`
-    : '<main><h1>Shift Swap</h1><p>Use your Gmail or natera.com account.</p><p><a href="/auth/google">Sign in with Google</a></p></main>');
+  if (req.session.user) {
+    return res.redirect(req.session.user.profileComplete ? '/dashboard' : '/profile');
+  }
+  return res.type('html').send('<main><h1>Shift Swap</h1><p>Use your Gmail or natera.com account.</p><p><a href="/auth/google">Sign in with Google</a></p></main>');
 });
 
 app.get('/auth/google', (req, res) => {
@@ -92,7 +135,7 @@ app.get('/auth/google/callback', async (req, res, next) => {
     const { code, state, error } = req.query;
     if (error) return res.status(401).send('Google sign-in was not completed.');
     if (typeof code !== 'string' || typeof state !== 'string' || !req.session.oauthState ||
-        !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(req.session.oauthState))) {
+        !safeTokenEqual(state, req.session.oauthState)) {
       return res.status(400).send('Invalid OAuth state. Please try signing in again.');
     }
 
@@ -115,17 +158,92 @@ app.get('/auth/google/callback', async (req, res, next) => {
          !profile.email.toLowerCase().endsWith('@natera.com'))) {
       return res.status(403).send('Use a verified Gmail or natera.com account to sign in.');
     }
+    if (!db) return res.status(503).send('Database is not configured. Please contact the app administrator.');
 
+    const result = await db.query(
+      'SELECT id, email, first_name, last_name FROM "User" WHERE lower(email) = lower($1) LIMIT 1',
+      [profile.email],
+    );
+    if (result.rows[0]) {
+      req.session.user = userFromRow(result.rows[0], profile.picture || null);
+      return res.redirect('/dashboard');
+    }
+
+    const [fallbackFirstName, ...fallbackLastNames] = (profile.name || '').trim().split(/\s+/).filter(Boolean);
     req.session.user = {
-      id: profile.sub,
+      id: null,
       email: profile.email,
       name: profile.name || profile.email,
       picture: profile.picture || null,
+      profileComplete: false,
+      suggestedFirstName: profile.given_name || fallbackFirstName || '',
+      suggestedLastName: profile.family_name || fallbackLastNames.join(' '),
     };
-
-    return res.redirect('/dashboard');
+    return res.redirect('/profile');
   } catch (err) {
     return next(err);
+  }
+});
+
+app.get('/api/profile-options', requireUser, (req, res) => {
+  if (req.session.user.profileComplete) return res.status(409).json({ error: 'Profile is already complete' });
+  if (!req.session.profileCsrfToken) req.session.profileCsrfToken = crypto.randomBytes(32).toString('hex');
+  res.json({
+    csrfToken: req.session.profileCsrfToken,
+    firstName: req.session.user.suggestedFirstName || '',
+    lastName: req.session.user.suggestedLastName || '',
+    options: profileOptions,
+  });
+});
+
+app.post('/api/profile', requireUser, requireDatabase, async (req, res, next) => {
+  if (req.session.user.profileComplete) return res.status(409).json({ error: 'Profile is already complete' });
+  if (!safeTokenEqual(req.body.csrfToken, req.session.profileCsrfToken)) {
+    return res.status(403).json({ error: 'Invalid form token. Reload the page and try again.' });
+  }
+
+  const firstName = typeof req.body.firstName === 'string' ? req.body.firstName.trim() : '';
+  const lastName = typeof req.body.lastName === 'string' ? req.body.lastName.trim() : '';
+  const position = req.body.position;
+  const shiftNumber = req.body.shiftNumber;
+  const shiftDays = Array.isArray(req.body.shiftDays) ? req.body.shiftDays : [req.body.shiftDays].filter(Boolean);
+
+  if (!firstName || firstName.length > 100 || !lastName || lastName.length > 100) {
+    return res.status(400).json({ error: 'Enter a first and last name (up to 100 characters each).' });
+  }
+  if (!profileOptions.positions.includes(position) || !profileOptions.shiftNumbers.includes(shiftNumber) ||
+      shiftDays.length === 0 || shiftDays.some((day) => !profileOptions.shiftDays.includes(day))) {
+    return res.status(400).json({ error: 'Choose a valid position, shift number, and at least one shift day.' });
+  }
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    // Serialize registrations for this email so concurrent sign-ins cannot create duplicate profiles.
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended(lower($1), 0))', [req.session.user.email]);
+    const existing = await client.query(
+      'SELECT id, email, first_name, last_name FROM "User" WHERE lower(email) = lower($1) LIMIT 1',
+      [req.session.user.email],
+    );
+    let row = existing.rows[0];
+    if (!row) {
+      const inserted = await client.query(
+        `INSERT INTO "User" (first_name, last_name, email, position, shift_days, shift_number)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id, email, first_name, last_name`,
+        [firstName, lastName, req.session.user.email, position, shiftDays.join(', '), shiftNumber],
+      );
+      row = inserted.rows[0];
+    }
+    await client.query('COMMIT');
+    req.session.user = userFromRow(row, req.session.user.picture || null);
+    delete req.session.profileCsrfToken;
+    return res.json({ redirect: '/dashboard' });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    return next(err);
+  } finally {
+    client.release();
   }
 });
 
@@ -134,7 +252,7 @@ app.get('/me', (req, res) => {
   res.json(req.session.user);
 });
 
-app.get('/api/shift-requests', requireUser, requireDatabase, async (req, res, next) => {
+app.get('/api/shift-requests', requireProfile, requireDatabase, async (req, res, next) => {
   try {
     const result = await db.query(`
       SELECT

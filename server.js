@@ -1,5 +1,6 @@
 const crypto = require('node:crypto');
 const path = require('node:path');
+const fs = require('node:fs');
 const express = require('express');
 const cookieSession = require('cookie-session');
 const { OAuth2Client } = require('google-auth-library');
@@ -30,12 +31,17 @@ const oauthClient = new OAuth2Client(
   process.env.GOOGLE_CLIENT_SECRET,
   process.env.OAUTH_REDIRECT_URL,
 );
+// Connect to PostgreSQL over TLS and validate the server certificate using Aiven's CA certificate.
 const db = process.env.DATABASE_URL
   ? new Pool({
     connectionString: process.env.DATABASE_URL,
     max: 10,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 5_000,
+    ssl: {
+      rejectUnauthorized: true,
+      ca: fs.readFileSync(path.join(__dirname, 'certs', 'ca.pem'), 'utf8'),
+    },
   })
   : null;
 

@@ -4,7 +4,8 @@ const { Pool, Client } = require('pg');
 
 function addRequesterCurrentSchedule(query) {
   const text = typeof query === 'string' ? query : query?.text;
-  if (typeof text !== 'string' || !text.includes('FROM "ShiftSwapsOpen" r')) return query;
+  // Pool queries can pass through both Pool and Client wrappers; avoid adding the join twice.
+  if (typeof text !== 'string' || !text.includes('FROM "ShiftSwapsOpen" r') || text.includes('requester_current')) return query;
 
   const normalized = text
     .replace(

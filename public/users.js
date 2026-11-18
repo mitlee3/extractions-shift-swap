@@ -17,9 +17,11 @@ function displayDate(value) {
 function showMessage(node, text) { node.textContent = text; node.hidden = !text; }
 
 function renderUsers() {
+  const query = document.querySelector('#user-search').value.trim().toLocaleLowerCase();
   const list = document.querySelector('#users-list');
+  const filteredUsers = users.filter((user) => `${user.name || ''} ${user.email || ''}`.toLocaleLowerCase().includes(query));
   list.replaceChildren();
-  for (const user of users) {
+  for (const user of filteredUsers) {
     const button = element('button', `user-row${user.id === selectedUserId ? ' selected' : ''}`);
     button.type = 'button';
     button.setAttribute('aria-pressed', String(user.id === selectedUserId));
@@ -31,7 +33,7 @@ function renderUsers() {
     button.addEventListener('click', () => loadUser(user.id));
     list.append(button);
   }
-  showMessage(document.querySelector('#users-message'), users.length ? '' : 'No users found.');
+  showMessage(document.querySelector('#users-message'), filteredUsers.length ? '' : (users.length ? 'No users match your search.' : 'No users found.'));
 }
 
 function renderSchedules(schedules) {
@@ -117,6 +119,7 @@ async function initUsers() {
   } catch (error) { showMessage(document.querySelector('#users-message'), error.message); }
 }
 
+document.querySelector('#user-search').addEventListener('input', renderUsers);
 document.querySelectorAll('.swap-tab').forEach((tab) => tab.addEventListener('click', () => {
   document.querySelectorAll('.swap-tab').forEach((button) => {
     const active = button === tab;

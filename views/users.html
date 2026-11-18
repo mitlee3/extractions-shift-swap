@@ -6,6 +6,7 @@
   <title>Shift Swap · Users</title>
   <link rel="stylesheet" href="/assets/dashboard.css">
   <link rel="stylesheet" href="/assets/users.css">
+  <link rel="stylesheet" href="/assets/users-directory.css">
   <script src="/assets/users.js" defer></script>
 </head>
 <body>
@@ -26,6 +27,8 @@
       <main class="users-layout">
         <section class="card people-panel" aria-labelledby="people-heading">
           <div class="card-header"><div><p class="section-kicker">Extraction operations</p><h2 id="people-heading">All users</h2></div></div>
+          <label class="user-search-label" for="user-search">Search users</label>
+          <input id="user-search" class="user-search" type="search" placeholder="Name or email" autocomplete="off">
           <div id="users-list" class="users-list" aria-label="Users" aria-live="polite"></div>
           <p id="users-message" class="users-message" role="status" aria-live="polite">Loading users…</p>
         </section>

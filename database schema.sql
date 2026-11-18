@@ -19,6 +19,7 @@ CREATE TABLE "User" (
     last_name VARCHAR(100) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     profile_last_updated_at TIMESTAMPTZ
+
 );
 
 
@@ -35,6 +36,7 @@ CREATE TABLE "UserScheduleHistory" (
     position VARCHAR(4) NOT NULL CHECK (
         position IN ('CLA', 'CLS', 'CORE')
     ),
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (schedule_id, user_id)
 );
@@ -64,6 +66,12 @@ CREATE TABLE "UserScheduleDays" (
 
 CREATE TABLE "UserScheduleCurrent" (
     user_id UUID PRIMARY KEY    REFERENCES "User"(id) ON DELETE CASCADE,
+    shift_number VARCHAR(1) NOT NULL CHECK (
+        shift_number IN ('1', '2', '3')
+    ),
+    position VARCHAR(4) NOT NULL CHECK (
+        position IN ('CLA', 'CLS', 'CORE')
+    ),
     schedule_id INT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (schedule_id, user_id)  REFERENCES "UserScheduleHistory"(schedule_id, user_id) ON DELETE RESTRICT
@@ -162,6 +170,7 @@ CREATE TABLE "ScheduleExceptions" (
 );
 
 
+
 --------------------------------------------------------------------------------
 -- Indicies to make searching more computationally efficient
 --------------------------------------------------------------------------------
@@ -171,4 +180,8 @@ CREATE INDEX idx_schedule_history_user ON "UserScheduleHistory"(user_id);
 
 -- Purpose: displaying active offers
 CREATE INDEX idx_shift_offers_active ON "ShiftOffers"(corresponding_request_id) WHERE status = 'Active';
+
+-- Purpose: ensures one schedule is active in UserScheduleHistory
+CREATE UNIQUE INDEX idx_one_current_schedule_per_user ON "UserScheduleHistory"(user_id) WHERE is_current = TRUE;
+
 

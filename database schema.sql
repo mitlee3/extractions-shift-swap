@@ -1,5 +1,4 @@
 
-
 DROP TABLE IF EXISTS "ScheduleExceptions";
 DROP TABLE IF EXISTS "ShiftSwapsHistory";
 DROP TABLE IF EXISTS "ShiftOffers";
@@ -8,6 +7,8 @@ DROP TABLE IF EXISTS "UserScheduleCurrent";
 DROP TABLE IF EXISTS "UserScheduleDays";
 DROP TABLE IF EXISTS "UserScheduleHistory";
 DROP TABLE IF EXISTS "User";
+
+
 --------------------------------------------------------------------------------
 -- 1. USERS TABLE
 --------------------------------------------------------------------------------
@@ -16,12 +17,9 @@ CREATE TABLE "User" (
     email VARCHAR(255) UNIQUE NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    shift_number VARCHAR(1), 
-    position VARCHAR(4) CHECK (
-        position IN ('CLA', 'CLS', 'CORE')
-        ),    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
 
 --------------------------------------------------------------------------------
 -- 4. USER SCHEDULE HISTORY
@@ -30,6 +28,12 @@ CREATE TABLE "User" (
 CREATE TABLE "UserScheduleHistory" (
     schedule_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES "User"(id) ON DELETE RESTRICT,
+    shift_number VARCHAR(1) NOT NULL CHECK (
+        shift_number IN ('1', '2', '3')
+    ),
+    position VARCHAR(4) NOT NULL CHECK (
+        position IN ('CLA', 'CLS', 'CORE')
+    ),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (schedule_id, user_id)
 );
@@ -37,6 +41,13 @@ CREATE TABLE "UserScheduleHistory" (
 --------------------------------------------------------------------------------
 -- 2. USER SCHEDULE DAYS
 -- Stores the actual weekdays belonging to each schedule version.
+-- Monday    = 0
+-- Tuesday   = 1
+-- Wednesday = 2
+-- Thursday  = 3
+-- Friday    = 4
+-- Saturday  = 5
+-- Sunday    = 6
 --------------------------------------------------------------------------------
 
 CREATE TABLE "UserScheduleDays" (
@@ -64,13 +75,14 @@ CREATE TABLE "UserScheduleCurrent" (
 CREATE TABLE "ShiftSwapsOpen" (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     person_requesting UUID NOT NULL REFERENCES "User"(id) ON DELETE RESTRICT,
-    requester_schedule_id INTEGER NOT NULL REFERENCES "UserScheduleHistory"(schedule_id) ON DELETE RESTRICT,
+    requester_schedule_id INTEGER NOT NULL,
     person_requesting_on DATE NOT NULL,                           
-    request_opened_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    request_opened_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (requester_schedule_id, person_requesting)
         REFERENCES "UserScheduleHistory"(schedule_id, user_id)
         ON DELETE RESTRICT
+
 );
 
 --------------------------------------------------------------------------------
@@ -148,12 +160,16 @@ CREATE TABLE "ScheduleExceptions" (
     UNIQUE (user_id, exception_date)
 );
 
+
+
 --------------------------------------------------------------------------------
 -- Indicies to make searching more computationally efficient
 --------------------------------------------------------------------------------
--- For: retrieving previous schedules for employee, when a employee changed schedules
+
+-- Purpose: retrieving previous schedules for employee, when a employee changed schedules
 CREATE INDEX idx_schedule_history_user ON "UserScheduleHistory"(user_id);
 
--- For: displaying active offers
+-- Purpose: displaying active offers
 CREATE INDEX idx_shift_offers_active ON "ShiftOffers"(corresponding_request_id) WHERE status = 'Active';
+
 

@@ -1,12 +1,12 @@
-/* Keep the directory list within the available viewport and scroll its entries independently. */
-.users-layout { align-items:stretch; }
+/* Make the directory as tall as its matching entries, capped by the viewport. */
+.users-layout { align-items:start; }
 .people-panel {
   position:sticky;
   top:1rem;
-  height:calc(100vh - 2rem);
-  height:calc(100dvh - 2rem);
-  max-height:none;
-  min-height:250px;
+  height:auto;
+  max-height:calc(100vh - 2rem);
+  max-height:calc(100dvh - 2rem);
+  min-height:0;
   display:flex;
   flex-direction:column;
   overflow:hidden;
@@ -14,9 +14,24 @@
 .user-search-label { display:block; margin:.1rem 0 .35rem; color:var(--muted); font-size:.8rem; font-weight:700; }
 .user-search { flex:0 0 auto; width:100%; padding:.7rem .8rem; border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--text); font:inherit; }
 .user-search:focus { outline:2px solid #5268c9; outline-offset:1px; }
-.users-list { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:.15rem .25rem .4rem 0; scrollbar-gutter:stable; }
+.users-list {
+  flex:0 1 auto;
+  min-height:0;
+  max-height:calc(100vh - 18rem);
+  max-height:calc(100dvh - 18rem);
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  padding:.15rem .25rem .4rem 0;
+  scrollbar-gutter:stable;
+}
+.user-row { padding:.6rem .65rem; border:0; border-bottom:1px solid #dfe3e8; border-radius:0; }
+.user-row:last-child { border-bottom:0; }
+.user-row:hover,.user-row.selected { border-bottom-color:#dfe3e8; border-radius:7px; }
 .users-message { flex:0 0 auto; margin:.55rem 0 0; }
 @media(max-width:760px) {
-  .people-panel { position:static; height:calc(100vh - 220px); height:calc(100dvh - 220px); min-height:220px; }
-  .users-list { grid-template-columns:1fr; }
+  .people-panel { position:static; height:auto; max-height:calc(100vh - 220px); max-height:calc(100dvh - 220px); min-height:0; }
+  .users-list { max-height:calc(100vh - 24rem); max-height:calc(100dvh - 24rem); }
 }

@@ -78,7 +78,7 @@ function userFromRow(row, picture = null) {
 }
 function currentUserSelect(whereClause) {
   return `
-    SELECT u.id, u.email, u.first_name, u.last_name, u.profile_updated_at,
+    SELECT u.id, u.email, u.first_name, u.last_name, u.profile_last_updated_at,
            h.position, h.shift_number, c.schedule_id
     FROM "User" u
     LEFT JOIN "UserScheduleCurrent" c ON c.user_id = u.id
@@ -166,10 +166,10 @@ app.post('/api/profile', requireUser, requireDatabase, async (req, res, next) =>
     let row = existing.rows[0];
     if (row?.schedule_id) { await client.query('ROLLBACK'); req.session.user = userFromRow(row, req.session.user.picture || null); return res.status(409).json({ error: 'Profile is already complete' }); }
     if (!row) {
-      const inserted = await client.query('INSERT INTO "User" (first_name, last_name, email, profile_updated_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP) RETURNING id, email, first_name, last_name, profile_updated_at', [firstName, lastName, req.session.user.email]);
+      const inserted = await client.query('INSERT INTO "User" (first_name, last_name, email) VALUES ($1, $2, $3) RETURNING id, email, first_name, last_name, profile_last_updated_at', [firstName, lastName, req.session.user.email]);
       row = inserted.rows[0];
     } else {
-      const updated = await client.query('UPDATE "User" SET first_name = $2, last_name = $3, profile_updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id, email, first_name, last_name, profile_updated_at', [row.id, firstName, lastName]);
+      const updated = await client.query('UPDATE "User" SET first_name = $2, last_name = $3 WHERE id = $1 RETURNING id, email, first_name, last_name, profile_last_updated_at', [row.id, firstName, lastName]);
       row = updated.rows[0];
     }
     const schedule = await client.query('INSERT INTO "UserScheduleHistory" (user_id, shift_number, position) VALUES ($1, $2, $3) RETURNING schedule_id', [row.id, shiftNumber, position]);
@@ -191,12 +191,8 @@ app.get('/api/profile-settings', requireProfile, requireDatabase, async (req, re
     const row = userResult.rows[0];
     if (!row) return res.status(404).json({ error: 'Profile not found' });
     const daysResult = await db.query('SELECT day_of_week FROM "UserScheduleDays" WHERE schedule_id = $1 ORDER BY day_of_week', [row.schedule_id]);
-    const lastUpdated = row.profile_updated_at ? new Date(row.profile_updated_at) : null;
-    const scheduleUpdated = row.profile_updated_at ? null : null;
-    const fallbackResult = row.profile_updated_at ? null : await db.query('SELECT created_at FROM "UserScheduleHistory" WHERE schedule_id = $1 AND user_id = $2', [row.schedule_id, row.id]);
-    const fallbackDate = fallbackResult?.rows[0]?.created_at ? new Date(fallbackResult.rows[0].created_at) : null;
-    const lastUpdateDate = lastUpdated || fallbackDate;
-    const nextUpdateDate = lastUpdateDate ? new Date(lastUpdateDate.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
+    const lastUpdate = row.profile_last_updated_at ? new Date(row.profile_last_updated_at) : null;
+    const nextUpdateDate = lastUpdate ? new Date(lastUpdate.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
     const canUpdate = !nextUpdateDate || nextUpdateDate.getTime() <= Date.now();
     res.json({ csrfToken: req.session.profileUpdateCsrfToken, firstName: row.first_name, lastName: row.last_name, position: row.position, shiftNumber: row.shift_number, shiftDays: daysResult.rows.map((item) => item.day_of_week), options: profileOptions, canUpdate, nextUpdateDate: nextUpdateDate?.toISOString() || null });
   } catch (err) { next(err); }
@@ -221,12 +217,14 @@ app.post('/api/profile-settings', requireProfile, requireDatabase, async (req, r
     if (!row) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Profile not found' }); }
     const daysResult = await client.query('SELECT day_of_week FROM "UserScheduleDays" WHERE schedule_id = $1 ORDER BY day_of_week', [row.schedule_id]);
     const oldDays = daysResult.rows.map((item) => item.day_of_week);
-    const fallbackResult = row.profile_updated_at ? null : await client.query('SELECT created_at FROM "UserScheduleHistory" WHERE schedule_id = $1 AND user_id = $2', [row.schedule_id, row.id]);
-    const lastUpdateDate = row.profile_updated_at ? new Date(row.profile_updated_at) : fallbackResult?.rows[0]?.created_at ? new Date(fallbackResult.rows[0].created_at) : null;
-    const nextUpdateDate = lastUpdateDate ? new Date(lastUpdateDate.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
-    if (nextUpdateDate && nextUpdateDate.getTime() > Date.now()) { await client.query('ROLLBACK'); return res.status(409).json({ error: `Profile updates are available again ${nextUpdateDate.toLocaleDateString()}.`, nextUpdateDate: nextUpdateDate.toISOString() }); }
+    const lastUpdate = row.profile_last_updated_at ? new Date(row.profile_last_updated_at) : null;
+    const nextUpdateDate = lastUpdate ? new Date(lastUpdate.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
+    if (nextUpdateDate && nextUpdateDate.getTime() > Date.now()) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: `Profile updates are available again ${nextUpdateDate.toLocaleDateString()}.`, nextUpdateDate: nextUpdateDate.toISOString() });
+    }
 
-    await client.query('UPDATE "User" SET first_name = $2, last_name = $3, profile_updated_at = CURRENT_TIMESTAMP WHERE id = $1', [row.id, firstName, lastName]);
+    await client.query('UPDATE "User" SET first_name = $2, last_name = $3, profile_last_updated_at = CURRENT_TIMESTAMP WHERE id = $1', [row.id, firstName, lastName]);
     const scheduleChanged = row.position !== position || row.shift_number !== shiftNumber || JSON.stringify(oldDays) !== JSON.stringify(shiftDays);
     if (scheduleChanged) {
       const schedule = await client.query('INSERT INTO "UserScheduleHistory" (user_id, shift_number, position) VALUES ($1, $2, $3) RETURNING schedule_id', [row.id, shiftNumber, position]);
@@ -285,13 +283,6 @@ app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
   res.status(500).send('Request failed. Please try again later.');
 });
-
-async function start() {
-  if (db) {
-    await db.query('ALTER TABLE "User" ADD COLUMN IF NOT EXISTS profile_updated_at TIMESTAMPTZ');
-  }
-  const port = Number(process.env.PORT) || 8080;
-  app.listen(port, '0.0.0.0', () => console.log(`Listening on ${port}`));
-}
-start().catch((err) => { console.error('Failed to start application:', err); process.exit(1); });
+const port = Number(process.env.PORT) || 8080;
+app.listen(port, '0.0.0.0', () => console.log(`Listening on ${port}`));
 process.on('SIGTERM', () => { if (db) db.end().catch((err) => console.error('Error closing PostgreSQL pool:', err)); });

@@ -20,7 +20,7 @@ const expressFactory = function (...args) {
     if (!pageMiddlewareInstalled && route === '/dashboard') {
       pageMiddlewareInstalled = true;
       app.use(async (req, res, next) => {
-        if (!['/users', '/dashboard', '/settings'].includes(req.path)
+        if (!['/users', '/dashboard', '/settings', '/api/users'].includes(req.path)
           && !req.path.startsWith('/api/users/')) return next();
         if (!req.session?.user) return res.redirect('/');
         if (!req.session.user.profileComplete) return res.redirect('/profile');

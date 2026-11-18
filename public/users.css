@@ -3,8 +3,6 @@
 .people-panel { padding:1.25rem; position:sticky; top:1rem; max-height:calc(100vh - 2rem); overflow:auto; }
 .people-panel .card-header { margin-bottom:.8rem; }
 .people-panel h2,.selected-user h2 { margin:.2rem 0 0; font-size:1.35rem; }
-.search-label { display:block; margin:.5rem 0 .35rem; font-size:.8rem; font-weight:700; color:var(--muted); }
-#user-search { width:100%; padding:.7rem .8rem; border:1px solid var(--border); border-radius:8px; background:#fff; font:inherit; }
 .users-list { display:grid; gap:.4rem; margin-top:.85rem; }
 .user-row { width:100%; text-align:left; border:1px solid transparent; border-radius:9px; background:transparent; padding:.75rem; cursor:pointer; color:var(--text); }
 .user-row:hover,.user-row.selected { border-color:#cdd5f6; background:#f3f5ff; }

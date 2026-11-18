@@ -1,1 +1,0 @@
-ALTER TABLE "User" ADD COLUMN IF NOT EXISTS profile_updated_at TIMESTAMPTZ;

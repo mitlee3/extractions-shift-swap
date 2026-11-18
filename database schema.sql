@@ -34,9 +34,6 @@ CREATE TABLE "UserScheduleHistory" (
     position VARCHAR(4) NOT NULL CHECK (
         position IN ('CLA', 'CLS', 'CORE')
     ),
-
-    is_current BOOLEAN NOT NULL,
-
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (schedule_id, user_id)
 );
@@ -173,8 +170,4 @@ CREATE INDEX idx_schedule_history_user ON "UserScheduleHistory"(user_id);
 
 -- Purpose: displaying active offers
 CREATE INDEX idx_shift_offers_active ON "ShiftOffers"(corresponding_request_id) WHERE status = 'Active';
-
--- Purpose: ensures one schedule is active in UserScheduleHistory
-CREATE UNIQUE INDEX idx_one_current_schedule_per_user ON "UserScheduleHistory"(user_id) WHERE is_current = TRUE;
-
 

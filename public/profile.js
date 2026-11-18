@@ -1,11 +1,14 @@
+// Hold the one-time token returned by the server to authorize profile creation.
 let csrfToken;
 
+// Display profile-loading or submission errors in the form's accessible alert.
 function showError(message) {
   const errorElement = document.querySelector('#form-error');
   errorElement.textContent = message;
   errorElement.hidden = false;
 }
 
+// Populate a select menu with a disabled prompt followed by the server-provided choices.
 function addSelectOptions(selector, values, placeholder) {
   const select = document.querySelector(selector);
   select.replaceChildren();
@@ -15,6 +18,7 @@ function addSelectOptions(selector, values, placeholder) {
   values.forEach((value) => select.append(new Option(value, value)));
 }
 
+// Load saved name suggestions and profile choices, then build weekday checkbox controls.
 async function initProfile() {
   try {
     const response = await fetch('/api/profile-options');
@@ -26,6 +30,7 @@ async function initProfile() {
     addSelectOptions('#position', data.options.positions, 'Select a position');
     addSelectOptions('#shift-number', data.options.shiftNumbers, 'Select a shift');
 
+    // Create one checkbox for each weekday option supplied by the server.
     const days = document.querySelector('#shift-days');
     days.replaceChildren();
     for (const day of data.options.shiftDays) {
@@ -43,6 +48,7 @@ async function initProfile() {
   }
 }
 
+// Collect profile fields, submit them with the CSRF token, and navigate after successful creation.
 document.querySelector('#profile-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const errorElement = document.querySelector('#form-error');
@@ -70,4 +76,5 @@ document.querySelector('#profile-form').addEventListener('submit', async (event)
   }
 });
 
+// Initialize the profile form when its page loads.
 initProfile();

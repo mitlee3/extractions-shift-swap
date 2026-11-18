@@ -1,4 +1,4 @@
-// Map database status values to dashboard badge classes.
+// Map server-side request states to the CSS badge colors used by the dashboard.
 function badgeClass(status) {
   const value = String(status).toLowerCase();
   if (value.includes('accepted') || value === 'selected') return 'badge-approved';
@@ -6,18 +6,24 @@ function badgeClass(status) {
   if (value.includes('denied') || value.includes('withdrawn') || value.includes('cancelled') || value === 'expired') return 'badge-rejected';
   return 'badge-neutral';
 }
+
+// Format a date-only value for display without showing a placeholder for missing dates.
 function formatDate(value) {
   if (!value) return '—';
   const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})/.exec(String(value));
   if (!match) return String(value);
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])).toLocaleDateString();
 }
+
+// Convert an ISO date to the app's Monday-zero weekday numbering, using UTC to avoid timezone shifts.
 function weekdayFromDate(value) {
   const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})/.exec(String(value || ''));
   return match
     ? (new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))).getUTCDay() + 6) % 7
     : null;
 }
+
+// Create a text-only DOM element to safely display API-provided values.
 function appendText(parent, tag, className, value) {
   const element = document.createElement(tag);
   if (className) element.className = className;
@@ -25,14 +31,20 @@ function appendText(parent, tag, className, value) {
   parent.append(element);
   return element;
 }
+
+// Keep the signed-in user's current position and recurring days available during rendering and offer validation.
 let currentUser = null;
 let userWorkDays = [];
 let activeOfferRequest = null;
+
+// Only permit an offered date that the current user normally works and the requester does not.
 function offerDateIsValid(value, request) {
   const day = weekdayFromDate(value);
   const requesterDays = (request.requester_shift_days || request.requester_days || []).map(Number);
   return day !== null && userWorkDays.includes(day) && !requesterDays.includes(day);
 }
+
+// Render open requests as compatibility-colored cards and update the dashboard's request counters.
 function renderRequests(allRequests) {
   const container = document.querySelector('#request-cards');
   const message = document.querySelector('#requests-message');
@@ -42,6 +54,7 @@ function renderRequests(allRequests) {
   document.querySelector('#accepted-count').textContent = allRequests.filter((item) => item.status === 'Accepted By Core').length;
   document.querySelector('#pending-count').textContent = allRequests.filter((item) => item.status === 'Submitted Pending').length;
 
+  // Compare each open request with both employees' schedule and position before building its card.
   for (const request of requests) {
     const userPosition = currentUser?.position;
     const requesterPosition = request.requester_position || request.position;
@@ -57,6 +70,8 @@ function renderRequests(allRequests) {
     appendText(card, 'h4', 'request-date', formatDate(request.person_requesting_on));
     appendText(card, 'p', 'requester-name', request.requester_name || 'Team member');
     appendText(card, 'p', 'request-detail', requesterPosition ? `Position: ${requesterPosition}` : 'Position details unavailable');
+
+    // Show the compatibility result and a specific reason when a request cannot be offered on.
     const footer = document.createElement('div');
     footer.className = 'request-compatibility';
     appendText(footer, 'strong', '', compatible ? 'Compatible with your schedule.' : 'Not compatible with your schedule.');
@@ -66,6 +81,8 @@ function renderRequests(allRequests) {
       appendText(footer, 'span', 'compatibility-reason', reason);
     }
     card.append(footer);
+
+    // Only compatible requests receive a button to open the offer-date prompt.
     if (compatible) {
       const button = appendText(card, 'button', 'primary-btn offer-btn', 'Make offer');
       button.type = 'button';
@@ -75,6 +92,8 @@ function renderRequests(allRequests) {
   }
   message.textContent = requests.length ? '' : 'There are no open shift requests right now.';
 }
+
+// Populate and show the offer dialog for the selected request.
 function openOfferDialog(request) {
   activeOfferRequest = request;
   document.querySelector('#offer-request-summary').textContent = `Offer to cover ${request.requester_name || 'this request'} on ${formatDate(request.person_requesting_on)}.`;
@@ -84,6 +103,8 @@ function openOfferDialog(request) {
   document.querySelector('#offer-error').hidden = true;
   document.querySelector('#offer-dialog').showModal();
 }
+
+// Load the signed-in account, open requests, and current profile schedule before rendering the dashboard.
 async function loadDashboard() {
   try {
     const [userResponse, requestsResponse, scheduleResponse] = await Promise.all([
@@ -105,9 +126,13 @@ async function loadDashboard() {
     document.querySelector('#requests-message').textContent = error.message;
   }
 }
+
+// Wire up controls for opening and closing the create-request dialog.
 const requestDialog = document.querySelector('#request-dialog');
 document.querySelector('#open-request-btn').addEventListener('click', () => requestDialog.showModal());
 document.querySelector('#close-dialog').addEventListener('click', () => requestDialog.close());
+
+// Submit a new day-off request and refresh the dashboard when it succeeds.
 document.querySelector('#request-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const error = document.querySelector('#request-error');
@@ -124,7 +149,11 @@ document.querySelector('#request-form').addEventListener('submit', async (event)
     await loadDashboard();
   } catch (err) { error.textContent = err.message; error.hidden = false; }
 });
+
+// Close the offer prompt without submitting an offer.
 document.querySelector('#close-offer-dialog').addEventListener('click', () => document.querySelector('#offer-dialog').close());
+
+// Validate and submit the selected work date, then reload open requests after a successful offer.
 document.querySelector('#offer-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const error = document.querySelector('#offer-error');
@@ -146,4 +175,6 @@ document.querySelector('#offer-form').addEventListener('submit', async (event) =
     await loadDashboard();
   } catch (err) { error.textContent = err.message; error.hidden = false; }
 });
+
+// Fetch initial dashboard data once the page's deferred script runs.
 loadDashboard();

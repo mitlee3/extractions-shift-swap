@@ -7,6 +7,14 @@ function badgeClass(status) {
   return 'badge-neutral';
 }
 
+// Weekday labels correspond to the Monday-zero values stored in UserScheduleDays.
+const weekdays = [
+  { short: 'Mon', full: 'Monday' }, { short: 'Tue', full: 'Tuesday' },
+  { short: 'Wed', full: 'Wednesday' }, { short: 'Thu', full: 'Thursday' },
+  { short: 'Fri', full: 'Friday' }, { short: 'Sat', full: 'Saturday' },
+  { short: 'Sun', full: 'Sunday' },
+];
+
 // Format a date-only value for display without showing a placeholder for missing dates.
 function formatDate(value) {
   if (!value) return '—';
@@ -32,6 +40,16 @@ function appendText(parent, tag, className, value) {
   return element;
 }
 
+// Replace the three numeric summary cards with one centered, compact section heading.
+function setupRequestHeading() {
+  const headingContainer = document.querySelector('.stats-grid');
+  if (!headingContainer) return;
+  headingContainer.className = 'request-title-wrap';
+  headingContainer.replaceChildren();
+  const heading = appendText(headingContainer, 'h2', 'request-title', 'Open Shift Requests');
+  headingContainer.setAttribute('aria-label', heading.textContent);
+}
+
 // Keep the signed-in user's current position and recurring days available during rendering and offer validation.
 let currentUser = null;
 let userWorkDays = [];
@@ -44,15 +62,12 @@ function offerDateIsValid(value, request) {
   return day !== null && userWorkDays.includes(day) && !requesterDays.includes(day);
 }
 
-// Render open requests as compatibility-colored cards and update the dashboard's request counters.
+// Render open requests as compatibility-colored cards and show each requester's current workdays.
 function renderRequests(allRequests) {
   const container = document.querySelector('#request-cards');
   const message = document.querySelector('#requests-message');
   const requests = allRequests.filter((request) => String(request.status).toLowerCase() === 'open');
   container.replaceChildren();
-  document.querySelector('#open-count').textContent = requests.length;
-  document.querySelector('#accepted-count').textContent = allRequests.filter((item) => item.status === 'Accepted By Core').length;
-  document.querySelector('#pending-count').textContent = allRequests.filter((item) => item.status === 'Submitted Pending').length;
 
   // Compare each open request with both employees' schedule and position before building its card.
   for (const request of requests) {
@@ -70,6 +85,21 @@ function renderRequests(allRequests) {
     appendText(card, 'h4', 'request-date', formatDate(request.person_requesting_on));
     appendText(card, 'p', 'requester-name', request.requester_name || 'Team member');
     appendText(card, 'p', 'request-detail', requesterPosition ? `Position: ${requesterPosition}` : 'Position details unavailable');
+
+    // Display all seven weekdays; filled circles indicate the requester's current recurring workdays.
+    const schedule = document.createElement('div');
+    schedule.className = 'request-schedule';
+    appendText(schedule, 'span', 'schedule-label', 'Schedule:');
+    const dayList = document.createElement('div');
+    dayList.className = 'schedule-days';
+    for (const [index, day] of weekdays.entries()) {
+      const worksDay = requesterDays.includes(index);
+      const chip = appendText(dayList, 'span', `schedule-day ${worksDay ? 'is-workday' : 'is-day-off'}`, day.short);
+      chip.setAttribute('aria-label', `${day.full}: ${worksDay ? 'normally works' : 'not normally scheduled'}`);
+      chip.title = `${day.full}: ${worksDay ? 'normally works' : 'not normally scheduled'}`;
+    }
+    schedule.append(dayList);
+    card.append(schedule);
 
     // Show the compatibility result and a specific reason when a request cannot be offered on.
     const footer = document.createElement('div');
@@ -176,5 +206,7 @@ document.querySelector('#offer-form').addEventListener('submit', async (event) =
   } catch (err) { error.textContent = err.message; error.hidden = false; }
 });
 
+// Replace the former summary boxes with the compact open-requests heading.
+setupRequestHeading();
 // Fetch initial dashboard data once the page's deferred script runs.
 loadDashboard();

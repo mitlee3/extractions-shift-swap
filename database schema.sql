@@ -138,12 +138,13 @@ CREATE TABLE "ShiftSwapsHistory" (
         CHECK (
             status IN (
                 'Submitted Pending',
-                'Accepted By Core',
+                'Approved by Core',
                 'Denied By Core',
                 'Cancelled',
                 'Expired'
             )
         ),
+    denied_message VARCHAR(250) DEFAULT NULL,
     status_timestamp TIMESTAMPTZ,
     CHECK (person_requesting <> person_offering),
 

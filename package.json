@@ -5,7 +5,7 @@
   "description": "Google sign-in starter for Cloud Run",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node -r ./schedule-schema-compat.js server.js"
   },
   "engines": {
     "node": ">=20"

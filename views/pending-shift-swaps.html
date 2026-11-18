@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shift Swap · Pending Shift Swaps</title>
+  <link rel="stylesheet" href="/assets/dashboard.css">
+  <link rel="stylesheet" href="/assets/pending-shift-swaps.css">
+  <script src="/assets/pending-shift-swaps.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/dashboard"><span class="brand-mark">E</span><span>Extraction</span></a>
+      <nav class="side-nav" aria-label="Primary navigation">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/users">Users</a>
+        <a class="active" href="/pending-shift-swaps" aria-current="page">Pending Shift Swaps</a>
+        <a href="/settings">Profile settings</a>
+      </nav>
+      <a class="sign-out sidebar-sign-out" href="/logout">Sign out</a>
+    </aside>
+    <div class="app-main">
+      <header class="page-header"><div><p class="section-kicker">Core review</p><h1>Pending Shift Swaps</h1></div></header>
+      <main class="pending-layout">
+        <section class="card pending-panel" aria-labelledby="pending-heading">
+          <div class="card-header"><div><p class="section-kicker">Needs review</p><h2 id="pending-heading">Shift swap requests</h2></div><button id="refresh-swaps" class="secondary-btn" type="button">Refresh</button></div>
+          <p id="pending-message" class="pending-message" role="status" aria-live="polite">Loading pending shift swaps…</p>
+          <div id="pending-list" class="pending-list" aria-live="polite"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <dialog id="decision-dialog" class="decision-dialog">
+    <form id="decision-form">
+      <div class="card-header"><div><p class="section-kicker" id="dialog-kicker">Confirm decision</p><h2 id="dialog-title"></h2></div><button id="close-dialog" class="text-btn" type="button" aria-label="Close">×</button></div>
+      <p id="dialog-description" class="decision-description"></p>
+      <div id="deny-message-field" class="deny-message-field" hidden>
+        <label for="denied-message">Details for the users <span>(optional, 250 characters max)</span></label>
+        <textarea id="denied-message" name="deniedMessage" maxlength="250" rows="4" placeholder="Add details to share with the users"></textarea>
+        <div class="character-count"><span id="character-count">0</span>/250</div>
+      </div>
+      <p id="dialog-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button id="confirm-decision" class="primary-btn" type="submit"></button>
+        <button id="cancel-decision" class="secondary-btn" type="button">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

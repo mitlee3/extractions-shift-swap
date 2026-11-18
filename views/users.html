@@ -16,6 +16,7 @@
       <nav class="side-nav" aria-label="Primary navigation">
         <a href="/dashboard">Dashboard</a>
         <a class="active" href="/users" aria-current="page">Users</a>
+        <a href="/pending-shift-swaps">Pending Shift Swaps</a>
         <a href="/settings">Profile settings</a>
       </nav>
       <a class="sign-out sidebar-sign-out" href="/logout">Sign out</a>
@@ -32,16 +33,12 @@
           <div id="users-list" class="users-list" aria-label="Users" aria-live="polite"></div>
           <p id="users-message" class="users-message" role="status" aria-live="polite">Loading users…</p>
         </section>
-
         <section class="user-detail" aria-live="polite">
           <div id="empty-detail" class="card empty-detail"><span class="empty-icon" aria-hidden="true">↖</span><h2>Select a user</h2><p>Choose someone from the list to view their schedule history and shift swaps.</p></div>
           <div id="detail-content" hidden>
             <header class="selected-user"><div><p class="section-kicker">User details</p><h2 id="selected-name"></h2><p id="selected-email" class="muted"></p></div><span id="selected-schedule" class="user-meta"></span></header>
             <div class="user-columns">
-              <section class="card schedule-panel" aria-labelledby="schedule-heading">
-                <p class="section-kicker">Schedule changes</p><h3 id="schedule-heading">Schedule History</h3>
-                <div id="schedule-history" class="schedule-history"></div>
-              </section>
+              <section class="card schedule-panel" aria-labelledby="schedule-heading"><p class="section-kicker">Schedule changes</p><h3 id="schedule-heading">Schedule History</h3><div id="schedule-history" class="schedule-history"></div></section>
               <section class="card swaps-panel" aria-labelledby="swaps-heading">
                 <div class="card-header"><div><p class="section-kicker">Requests and offers</p><h3 id="swaps-heading">Shift Swaps</h3></div></div>
                 <div class="swap-tabs" role="tablist" aria-label="Shift swap status">

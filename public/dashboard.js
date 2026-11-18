@@ -14,7 +14,9 @@ function formatDate(value) {
 }
 function weekdayFromDate(value) {
   const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})/.exec(String(value || ''));
-  return match ? (new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])).getUTCDay() + 6) % 7) : null;
+  return match
+    ? (new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))).getUTCDay() + 6) % 7
+    : null;
 }
 function appendText(parent, tag, className, value) {
   const element = document.createElement(tag);

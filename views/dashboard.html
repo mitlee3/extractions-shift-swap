@@ -1,4 +1,3 @@
-<!-- This file is generated from the repository dashboard. Profile settings are available from the left navigation. -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Shift Swap Dashboard</title>
   <link rel="stylesheet" href="/assets/dashboard.css">
+  <link rel="stylesheet" href="/assets/dashboard-cards.css">
   <script src="/assets/dashboard.js" defer></script>
 </head>
 <body>
@@ -26,9 +26,9 @@
           <article class="stat-card"><p class="stat-label">Accepted</p><h2 id="accepted-count">0</h2></article>
           <article class="stat-card"><p class="stat-label">Pending</p><h2 id="pending-count">0</h2></article>
         </section>
-        <section class="card">
-          <div class="card-header"><div><p class="section-kicker">Team schedule</p><h3>Shift swap activity</h3></div><button id="open-request-btn" class="primary-btn" type="button">Request a swap</button></div>
-          <div class="table-wrap"><table><thead><tr><th>Requesting employee</th><th>Offering employee</th><th>Requested off</th><th>Offered on</th><th>Status</th></tr></thead><tbody id="swap-table-body"></tbody></table></div>
+        <section class="card requests-panel">
+          <div class="card-header"><div><p class="section-kicker">Team schedule</p><h3>Open shift requests</h3></div><button id="open-request-btn" class="primary-btn" type="button">Request a swap</button></div>
+          <div id="request-cards" class="request-grid" aria-live="polite"></div>
           <p id="requests-message" role="status" aria-live="polite">Loading shift swaps…</p>
         </section>
       </main>
@@ -39,6 +39,15 @@
       <div class="card-header"><div><p class="section-kicker">New request</p><h3>Request a day off</h3></div><button id="close-dialog" class="text-btn" type="button" aria-label="Close">×</button></div>
       <label for="request-date">Date you are requesting off</label><input id="request-date" name="date" type="date" required>
       <p id="request-error" class="form-error" role="alert" hidden></p><button class="primary-btn" type="submit">Create request</button>
+    </form>
+  </dialog>
+  <dialog id="offer-dialog" class="request-dialog">
+    <form id="offer-form">
+      <div class="card-header"><div><p class="section-kicker">Make an offer</p><h3>Choose a day to work</h3></div><button id="close-offer-dialog" class="text-btn" type="button" aria-label="Close">×</button></div>
+      <p id="offer-request-summary" class="offer-summary"></p>
+      <label for="offer-date">Date you can work instead</label><input id="offer-date" name="date" type="date" required>
+      <p id="offer-date-help" class="muted"></p>
+      <p id="offer-error" class="form-error" role="alert" hidden></p><button id="submit-offer" class="primary-btn" type="submit">Submit offer</button>
     </form>
   </dialog>
 </body>

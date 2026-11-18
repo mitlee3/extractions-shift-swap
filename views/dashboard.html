@@ -1,7 +1,7 @@
+<!-- This file is generated from the repository dashboard. Profile settings are available from the left navigation. -->
 <!doctype html>
 <html lang="en">
 <head>
-  <!-- Configure the page and load shared styling and dashboard behavior. -->
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Shift Swap Dashboard</title>
@@ -9,40 +9,36 @@
   <script src="/assets/dashboard.js" defer></script>
 </head>
 <body>
-  <!-- Show the signed-in employee and sign-out action. -->
-  <header class="page-header">
-    <div><p class="section-kicker">Extraction operations</p><h1 id="greeting">Shift swaps</h1></div>
-    <a class="sign-out" href="/logout">Sign out</a>
-  </header>
-  <!-- Summarize open requests and statuses supported by ShiftSwapsHistory. -->
-  <main class="dashboard">
-    <section class="stats-grid">
-      <article class="stat-card"><p class="stat-label">Open requests</p><h2 id="open-count">0</h2></article>
-      <article class="stat-card"><p class="stat-label">Accepted</p><h2 id="accepted-count">0</h2></article>
-      <article class="stat-card"><p class="stat-label">Pending</p><h2 id="pending-count">0</h2></article>
-    </section>
-    <section class="card">
-      <div class="card-header">
-        <div><p class="section-kicker">Team schedule</p><h3>Shift swap activity</h3></div>
-        <button id="open-request-btn" class="primary-btn" type="button">Request a swap</button>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Requesting employee</th><th>Offering employee</th><th>Requested off</th><th>Offered on</th><th>Status</th></tr></thead>
-          <tbody id="swap-table-body"></tbody>
-        </table>
-      </div>
-      <p id="requests-message" role="status" aria-live="polite">Loading shift swaps…</p>
-    </section>
-  </main>
-  <!-- Collect the requested date and submit a row to ShiftSwapsOpen. -->
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/dashboard"><span class="brand-mark">E</span><span>Extraction</span></a>
+      <nav class="side-nav" aria-label="Primary navigation">
+        <a class="active" href="/dashboard">Dashboard</a>
+        <a href="/settings">Profile settings</a>
+      </nav>
+      <a class="sign-out sidebar-sign-out" href="/logout">Sign out</a>
+    </aside>
+    <div class="app-main">
+      <header class="page-header"><div><p class="section-kicker">Extraction operations</p><h1 id="greeting">Shift swaps</h1></div></header>
+      <main class="dashboard">
+        <section class="stats-grid">
+          <article class="stat-card"><p class="stat-label">Open requests</p><h2 id="open-count">0</h2></article>
+          <article class="stat-card"><p class="stat-label">Accepted</p><h2 id="accepted-count">0</h2></article>
+          <article class="stat-card"><p class="stat-label">Pending</p><h2 id="pending-count">0</h2></article>
+        </section>
+        <section class="card">
+          <div class="card-header"><div><p class="section-kicker">Team schedule</p><h3>Shift swap activity</h3></div><button id="open-request-btn" class="primary-btn" type="button">Request a swap</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Requesting employee</th><th>Offering employee</th><th>Requested off</th><th>Offered on</th><th>Status</th></tr></thead><tbody id="swap-table-body"></tbody></table></div>
+          <p id="requests-message" role="status" aria-live="polite">Loading shift swaps…</p>
+        </section>
+      </main>
+    </div>
+  </div>
   <dialog id="request-dialog" class="request-dialog">
     <form id="request-form" method="dialog">
       <div class="card-header"><div><p class="section-kicker">New request</p><h3>Request a day off</h3></div><button id="close-dialog" class="text-btn" type="button" aria-label="Close">×</button></div>
-      <label for="request-date">Date you are requesting off</label>
-      <input id="request-date" name="date" type="date" required>
-      <p id="request-error" class="form-error" role="alert" hidden></p>
-      <button class="primary-btn" type="submit">Create request</button>
+      <label for="request-date">Date you are requesting off</label><input id="request-date" name="date" type="date" required>
+      <p id="request-error" class="form-error" role="alert" hidden></p><button class="primary-btn" type="submit">Create request</button>
     </form>
   </dialog>
 </body>

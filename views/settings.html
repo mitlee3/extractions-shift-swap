@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shift Swap · Profile settings</title>
+  <link rel="stylesheet" href="/assets/dashboard.css">
+  <script src="/assets/settings.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/dashboard"><span class="brand-mark">E</span><span>Extraction</span></a>
+      <nav class="side-nav" aria-label="Primary navigation">
+        <a href="/dashboard">Dashboard</a>
+        <a class="active" href="/settings">Profile settings</a>
+      </nav>
+      <a class="sign-out sidebar-sign-out" href="/logout">Sign out</a>
+    </aside>
+    <div class="app-main">
+      <header class="page-header">
+        <div><p class="section-kicker">Account</p><h1>Profile settings</h1></div>
+      </header>
+      <main class="settings-layout">
+        <section class="card current-settings">
+          <p class="section-kicker">Current settings</p>
+          <dl class="settings-summary">
+            <div><dt>Name</dt><dd id="current-name">Loading…</dd></div>
+            <div><dt>Position</dt><dd id="current-position">Loading…</dd></div>
+            <div><dt>Shift</dt><dd id="current-shift">Loading…</dd></div>
+            <div><dt>Shift days</dt><dd id="current-days">Loading…</dd></div>
+          </dl>
+        </section>
+
+        <section class="card profile-form">
+          <div class="card-header"><div><p class="section-kicker">Update profile</p><h3>Schedule and name</h3></div></div>
+          <div id="update-window" class="update-window" role="status" aria-live="polite"></div>
+          <form id="settings-form">
+            <fieldset id="settings-fields">
+              <div class="form-grid">
+                <div><label for="first-name">First name</label><input id="first-name" name="firstName" maxlength="100" autocomplete="given-name" required></div>
+                <div><label for="last-name">Last name</label><input id="last-name" name="lastName" maxlength="100" autocomplete="family-name" required></div>
+                <div><label for="position">Position</label><select id="position" name="position" required></select></div>
+                <div><label for="shift-number">Shift number</label><select id="shift-number" name="shiftNumber" required></select></div>
+              </div>
+              <fieldset><legend>Shift days</legend><div id="shift-days" class="day-grid"></div></fieldset>
+            </fieldset>
+            <p id="form-error" class="form-error" role="alert" hidden></p>
+            <button id="save-profile" class="primary-btn" type="submit">Save changes</button>
+          </form>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

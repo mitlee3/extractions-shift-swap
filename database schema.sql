@@ -1,3 +1,13 @@
+
+
+DROP TABLE IF EXISTS "ScheduleExceptions";
+DROP TABLE IF EXISTS "ShiftSwapsHistory";
+DROP TABLE IF EXISTS "ShiftOffers";
+DROP TABLE IF EXISTS "ShiftSwapsOpen";
+DROP TABLE IF EXISTS "UserScheduleCurrent";
+DROP TABLE IF EXISTS "UserScheduleDays";
+DROP TABLE IF EXISTS "UserScheduleHistory";
+DROP TABLE IF EXISTS "User";
 --------------------------------------------------------------------------------
 -- 1. USERS TABLE
 --------------------------------------------------------------------------------
@@ -96,10 +106,10 @@ CREATE TABLE "ShiftOffers" (
 --------------------------------------------------------------------------------
 CREATE TABLE "ShiftSwapsHistory" (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    person_requesting UUID NOT NULL REFERENCES "User"(id) ON DELETE RESTRICT,
-    person_offering UUID NOT NULL REFERENCES "User"(id) ON DELETE RESTRICT,
-    requester_schedule_id INTEGER NOT NULL ON DELETE RESTRICT,
-    offering_schedule_id INTEGER NOT NULL ON DELETE RESTRICT,
+    person_requesting UUID NOT NULL REFERENCES "User"(id),
+    person_offering UUID NOT NULL REFERENCES "User"(id),
+    requester_schedule_id INTEGER NOT NULL,
+    offering_schedule_id INTEGER NOT NULL,
     person_requesting_on DATE NOT NULL,
     person_offering_on DATE NOT NULL,
     submitted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -114,7 +124,7 @@ CREATE TABLE "ShiftSwapsHistory" (
             )
         ),
     status_timestamp TIMESTAMPTZ,
-    CHECK (person_requesting <> person_offering)
+    CHECK (person_requesting <> person_offering),
 
     FOREIGN KEY (requester_schedule_id, person_requesting)
         REFERENCES "UserScheduleHistory"(schedule_id, user_id)
@@ -137,8 +147,6 @@ CREATE TABLE "ScheduleExceptions" (
     shift_swap_id INT REFERENCES "ShiftSwapsHistory"(id) ON DELETE RESTRICT,
     UNIQUE (user_id, exception_date)
 );
-
-
 
 --------------------------------------------------------------------------------
 -- Indicies to make searching more computationally efficient

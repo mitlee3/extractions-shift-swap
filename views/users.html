@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shift Swap · Users</title>
+  <link rel="stylesheet" href="/assets/dashboard.css">
+  <link rel="stylesheet" href="/assets/users.css">
+  <script src="/assets/users.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/dashboard"><span class="brand-mark">E</span><span>Extraction</span></a>
+      <nav class="side-nav" aria-label="Primary navigation">
+        <a href="/dashboard">Dashboard</a>
+        <a class="active" href="/users" aria-current="page">Users</a>
+        <a href="/settings">Profile settings</a>
+      </nav>
+      <a class="sign-out sidebar-sign-out" href="/logout">Sign out</a>
+    </aside>
+    <div class="app-main">
+      <header class="page-header">
+        <div><p class="section-kicker">Team directory</p><h1>Users</h1></div>
+      </header>
+      <main class="users-layout">
+        <section class="card people-panel" aria-labelledby="people-heading">
+          <div class="card-header"><div><p class="section-kicker">Extraction operations</p><h2 id="people-heading">All users</h2></div></div>
+          <label class="search-label" for="user-search">Find a user</label>
+          <input id="user-search" type="search" placeholder="Search by name or email" autocomplete="off">
+          <div id="users-list" class="users-list" aria-label="Users" aria-live="polite"></div>
+          <p id="users-message" class="users-message" role="status" aria-live="polite">Loading users…</p>
+        </section>
+
+        <section class="user-detail" aria-live="polite">
+          <div id="empty-detail" class="card empty-detail"><span class="empty-icon" aria-hidden="true">↖</span><h2>Select a user</h2><p>Choose someone from the list to view their schedule history and shift swaps.</p></div>
+          <div id="detail-content" hidden>
+            <header class="selected-user"><div><p class="section-kicker">User details</p><h2 id="selected-name"></h2><p id="selected-email" class="muted"></p></div><span id="selected-schedule" class="user-meta"></span></header>
+            <div class="user-columns">
+              <section class="card schedule-panel" aria-labelledby="schedule-heading">
+                <p class="section-kicker">Schedule changes</p><h3 id="schedule-heading">Schedule History</h3>
+                <div id="schedule-history" class="schedule-history"></div>
+              </section>
+              <section class="card swaps-panel" aria-labelledby="swaps-heading">
+                <div class="card-header"><div><p class="section-kicker">Requests and offers</p><h3 id="swaps-heading">Shift Swaps</h3></div></div>
+                <div class="swap-tabs" role="tablist" aria-label="Shift swap status">
+                  <button class="swap-tab active" id="tab-open" role="tab" type="button" aria-selected="true" aria-controls="panel-open" data-tab="open">Open Shift Swaps</button>
+                  <button class="swap-tab" id="tab-pending" role="tab" type="button" aria-selected="false" aria-controls="panel-pending" data-tab="pending">Pending Shift Swaps</button>
+                  <button class="swap-tab" id="tab-accepted" role="tab" type="button" aria-selected="false" aria-controls="panel-accepted" data-tab="accepted">Accepted by Core Shift Swaps</button>
+                  <button class="swap-tab" id="tab-closed" role="tab" type="button" aria-selected="false" aria-controls="panel-closed" data-tab="closed">Denied, Cancelled, Expired</button>
+                </div>
+                <div id="panel-open" class="swap-panel" role="tabpanel" aria-labelledby="tab-open"></div>
+                <div id="panel-pending" class="swap-panel" role="tabpanel" aria-labelledby="tab-pending" hidden></div>
+                <div id="panel-accepted" class="swap-panel" role="tabpanel" aria-labelledby="tab-accepted" hidden></div>
+                <div id="panel-closed" class="swap-panel" role="tabpanel" aria-labelledby="tab-closed" hidden></div>
+              </section>
+            </div>
+          </div>
+          <p id="detail-message" class="users-message" role="status" hidden></p>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

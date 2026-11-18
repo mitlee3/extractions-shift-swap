@@ -1,5 +1,6 @@
-// Add authenticated directory and pending-approval pages to the existing Express app.
-// This preload installs its routes after session middleware and before server routes.
+// Add the user-history page and its read-only API to the existing Express app.
+// This preload keeps the feature isolated from the existing server routes while
+// placing its middleware after the app's session middleware and before its routes.
 const express = require('express');
 const pg = require('pg');
 const fs = require('node:fs');
@@ -36,8 +37,8 @@ const expressFactory = function (...args) {
           const filename = req.path === '/dashboard' ? 'dashboard.html' : 'settings.html';
           try {
             let html = await fs.promises.readFile(path.join(__dirname, 'views', filename), 'utf8');
-            const usersLink = `<a href="/users">Users</a>`;
-            const pendingLink = `<a class="${req.path === '/pending-shift-swaps' ? 'active' : ''}" href="/pending-shift-swaps">Pending Shift Swaps</a>`;
+            const usersLink = '<a href="/users">Users</a>';
+            const pendingLink = '<a href="/pending-shift-swaps">Pending Shift Swaps</a>';
             html = html.replace('<a href="/settings">Profile settings</a>', `${usersLink}\n        ${pendingLink}\n        <a href="/settings">Profile settings</a>`);
             return res.type('html').send(html);
           } catch (error) { return next(error); }
@@ -111,15 +112,20 @@ const expressFactory = function (...args) {
           if (!['approve', 'deny'].includes(action)) return res.status(400).json({ error: 'Choose approve or deny.' });
           if (message.length > 250) return res.status(400).json({ error: 'Denial details must be 250 characters or fewer.' });
           try {
-            const status = action === 'approve' ? 'Approved by Core' : 'Denied By Core';
             const result = await poolInstance.query(`
               UPDATE "ShiftSwapsHistory"
-              SET status = $2,
+              SET status = CASE
+                    WHEN $2 = 'approve' THEN 'Approved by Core'
+                    WHEN $2 = 'deny' THEN 'Denied By Core'
+                  END,
                   status_timestamp = CURRENT_TIMESTAMP,
-                  denied_message = CASE WHEN $2 = 'Denied By Core' THEN $3 ELSE NULL END
+                  denied_message = CASE
+                    WHEN $2 = 'deny' THEN $3
+                    ELSE NULL
+                  END
               WHERE id = $1 AND status IN ('Pending', 'Submitted Pending')
               RETURNING id, status, status_timestamp, denied_message
-            `, [swapId, status, action === 'deny' ? message : null]);
+            `, [swapId, action, action === 'deny' ? message : null]);
             if (!result.rows[0]) return res.status(409).json({ error: 'This shift swap is no longer pending.' });
             return res.json(result.rows[0]);
           } catch (error) { return next(error); }
@@ -180,7 +186,6 @@ const expressFactory = function (...args) {
 Object.assign(expressFactory, express);
 require.cache[require.resolve('express')].exports = expressFactory;
 
-// Share the server's PostgreSQL pool with these page handlers.
 const OriginalPool = pg.Pool;
 class PagePool extends OriginalPool {
   constructor(...args) {

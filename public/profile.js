@@ -1,47 +1,55 @@
+// Hold the anti-CSRF token returned by the server for this profile form session.
 let csrfToken;
 
-function addOptions(select, values, placeholder) {
-  if (placeholder) {
-    const option = document.createElement('option');
-    option.value = '';
-    option.textContent = placeholder;
-    option.disabled = true;
-    option.selected = true;
-    select.append(option);
-  }
-  for (const value of values) {
-    const option = document.createElement('option');
-    option.value = value;
-    option.textContent = value;
-    select.append(option);
-  }
-}
-
-fetch('/api/profile-options')
-  .then(async (response) => {
+// Load profile defaults and construct form choices that mirror the schema constraints.
+async function initProfile() {
+  try {
+    const response = await fetch('/api/profile-options');
     if (!response.ok) throw new Error('Could not load profile options. Please reload.');
-    return response.json();
-  })
-  .then((data) => {
+    const data = await response.json();
     csrfToken = data.csrfToken;
     document.querySelector('#first-name').value = data.firstName;
     document.querySelector('#last-name').value = data.lastName;
-    addOptions(document.querySelector('#position'), data.options.positions, 'Select a position');
-    addOptions(document.querySelector('#shift-days'), data.options.shiftDays);
-    addOptions(document.querySelector('#shift-number'), data.options.shiftNumbers, 'Select a shift');
-  })
-  .catch((error) => {
-    const errorElement = document.querySelector('#form-error');
-    errorElement.textContent = error.message;
-    errorElement.hidden = false;
-  });
+    addSelectOptions('#position', data.options.positions, 'Select a position');
+    addSelectOptions('#shift-number', data.options.shiftNumbers, 'Select a shift');
+    const days = document.querySelector('#shift-days');
+    for (const day of data.options.shiftDays) {
+      const label = document.createElement('label');
+      label.className = 'day-option';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.name = 'shiftDays';
+      input.value = String(day.value);
+      label.append(input, document.createTextNode(day.label));
+      days.append(label);
+    }
+  } catch (error) {
+    showError(error.message);
+  }
+}
 
+// Replace a select's contents with a placeholder and the supplied valid choices.
+function addSelectOptions(selector, values, placeholder) {
+  const select = document.querySelector(selector);
+  select.replaceChildren();
+  const empty = new Option(placeholder, '', true, true);
+  empty.disabled = true;
+  select.append(empty);
+  values.forEach((value) => select.append(new Option(value, value)));
+}
+
+// Display a form error in the accessible alert region.
+function showError(message) {
+  const errorElement = document.querySelector('#form-error');
+  errorElement.textContent = message;
+  errorElement.hidden = false;
+}
+
+// Submit validated profile values and recurring weekday numbers to the server.
 document.querySelector('#profile-form').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const errorElement = document.querySelector('#form-error');
-  errorElement.hidden = true;
-  const selectedDays = [...document.querySelector('#shift-days').selectedOptions]
-    .map((option) => option.value);
+  document.querySelector('#form-error').hidden = true;
+  const shiftDays = [...document.querySelectorAll('input[name="shiftDays"]:checked')].map((input) => Number(input.value));
   try {
     const response = await fetch('/api/profile', {
       method: 'POST',
@@ -51,15 +59,17 @@ document.querySelector('#profile-form').addEventListener('submit', async (event)
         firstName: document.querySelector('#first-name').value,
         lastName: document.querySelector('#last-name').value,
         position: document.querySelector('#position').value,
-        shiftDays: selectedDays,
         shiftNumber: document.querySelector('#shift-number').value,
+        shiftDays,
       }),
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Could not save your profile.');
     window.location.assign(result.redirect);
   } catch (error) {
-    errorElement.textContent = error.message;
-    errorElement.hidden = false;
+    showError(error.message);
   }
 });
+
+// Initialize the form as soon as the deferred script runs.
+initProfile();

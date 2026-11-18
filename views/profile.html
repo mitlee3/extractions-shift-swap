@@ -1,47 +1,38 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <!-- Set the page encoding, responsive viewport, title, shared styles, and profile script. -->
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Complete your profile · Shift Swap</title>
+  <title>Shift Swap · Complete profile</title>
   <link rel="stylesheet" href="/assets/dashboard.css">
-  <style>
-    .profile-form { max-width: 640px; margin: 2rem auto; padding: 2rem; }
-    .profile-form label { display: block; margin: 1rem 0 .4rem; font-weight: 600; }
-    .profile-form input, .profile-form select { box-sizing: border-box; width: 100%; padding: .7rem; font: inherit; }
-    .profile-form select[multiple] { min-height: 10rem; }
-    .profile-form button { margin-top: 1.5rem; }
-    #form-error { color: #a12622; }
-  </style>
   <script src="/assets/profile.js" defer></script>
 </head>
 <body>
+  <!-- Provide page context and a sign-out link. -->
   <header class="page-header">
-    <h1>Complete your profile</h1>
+    <div><p class="section-kicker">New employee</p><h1>Complete your profile</h1></div>
     <a class="sign-out" href="/logout">Sign out</a>
   </header>
-  <main class="card profile-form">
-    <p>We couldn't find an account for your signed-in email. Complete your work profile to continue.</p>
-    <form id="profile-form">
-      <label for="first-name">First name</label>
-      <input id="first-name" name="firstName" autocomplete="given-name" maxlength="100" required>
 
-      <label for="last-name">Last name</label>
-      <input id="last-name" name="lastName" autocomplete="family-name" maxlength="100" required>
-
-      <label for="position">Position</label>
-      <select id="position" name="position" required></select>
-
-      <label for="shift-days">Shift days (select all that apply)</label>
-      <select id="shift-days" name="shiftDays" multiple required></select>
-
-      <label for="shift-number">Shift number</label>
-      <select id="shift-number" name="shiftNumber" required></select>
-
-      <p>Account creation time is recorded automatically by the database.</p>
-      <p id="form-error" role="alert" hidden></p>
-      <button class="primary-btn" type="submit">Save profile and continue</button>
-    </form>
+  <!-- Collect fields corresponding to User and the normalized schedule tables. -->
+  <main class="profile-layout">
+    <section class="card profile-form">
+      <p class="profile-intro">Add the details used to match your recurring shift and verify swap requests.</p>
+      <form id="profile-form">
+        <div class="form-grid">
+          <div><label for="first-name">First name</label><input id="first-name" name="firstName" autocomplete="given-name" maxlength="100" required></div>
+          <div><label for="last-name">Last name</label><input id="last-name" name="lastName" autocomplete="family-name" maxlength="100" required></div>
+          <div><label for="position">Position</label><select id="position" name="position" required></select></div>
+          <div><label for="shift-number">Shift number</label><select id="shift-number" name="shiftNumber" required></select></div>
+        </div>
+        <!-- Weekday checkboxes map to UserScheduleDays.day_of_week values from 0 to 6. -->
+        <fieldset><legend>Recurring shift days</legend><div id="shift-days" class="day-grid"></div></fieldset>
+        <!-- Display accessible validation feedback and submit profile data. -->
+        <p id="form-error" class="form-error" role="alert" hidden></p>
+        <button class="primary-btn" type="submit">Save profile and continue</button>
+      </form>
+    </section>
   </main>
 </body>
 </html>

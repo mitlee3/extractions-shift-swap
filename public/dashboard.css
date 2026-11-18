@@ -1,3 +1,4 @@
+/* Theme tokens keep colors consistent across dashboard, profile, and dialogs. */
 :root { --bg:#f3f6fb; --panel:#fff; --border:#dfe5ef; --text:#172033; --muted:#647087; --primary:#26364a; --primary-soft:#edf1f7; --success-bg:#dcfce7; --success-text:#166534; --warning-bg:#fef3c7; --warning-text:#92400e; --danger-bg:#fee2e2; --danger-text:#991b1b; --neutral-bg:#e5e7eb; --neutral-text:#374151; }
 * { box-sizing:border-box; }
 body { margin:0; min-height:100vh; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(135deg,#f5f7fa,#edf2f8); color:var(--text); }
@@ -5,11 +6,6 @@ body { margin:0; min-height:100vh; font-family:system-ui,-apple-system,BlinkMacS
 .page-header h1 { margin:.15rem 0 0; font-size:1.55rem; }
 .sign-out { color:var(--muted); text-decoration:none; font-weight:700; }
 .section-kicker { margin:0; color:#5268c9; font-size:.72rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
-.app-layout { display:grid; grid-template-columns:220px minmax(0,1fr); gap:1.5rem; width:min(1440px,100%); margin:0 auto; align-items:start; }
-.sidebar { position:sticky; top:0; min-height:calc(100vh - 88px); padding:1.5rem 1rem; background:rgba(255,255,255,.72); border-right:1px solid var(--border); }
-.sidebar-label { margin:.25rem .75rem .8rem; color:var(--muted); font-size:.72rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
-.sidebar-link { display:block; padding:.78rem .85rem; margin:.2rem 0; border-radius:9px; color:var(--text); text-decoration:none; font-weight:700; }
-.sidebar-link:hover,.sidebar-link.active { background:var(--primary-soft); color:var(--primary); }
 .dashboard,.profile-layout { width:min(1120px,calc(100% - 2rem)); margin:2rem auto 3rem; }
 .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.25rem; }
 .stat-card,.card { background:var(--panel); border:1px solid var(--border); border-radius:14px; box-shadow:0 8px 24px rgba(23,32,51,.06); }
@@ -20,7 +16,6 @@ body { margin:0; min-height:100vh; font-family:system-ui,-apple-system,BlinkMacS
 .card-header { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1rem; }
 .card-header h3 { margin:.2rem 0 0; font-size:1.35rem; }
 .primary-btn { border:0; border-radius:9px; background:var(--primary); color:#fff; padding:.72rem 1rem; cursor:pointer; font-weight:750; text-decoration:none; display:inline-block; }
-.primary-btn:disabled { opacity:.55; cursor:not-allowed; }
 .text-btn { border:0; background:transparent; font-size:1.7rem; cursor:pointer; color:var(--muted); }
 .table-wrap { overflow-x:auto; }
 table { width:100%; border-collapse:collapse; }
@@ -38,13 +33,11 @@ th { color:var(--muted); background:var(--primary-soft); font-size:.76rem; text-
 label,legend { display:block; margin:1rem 0 .38rem; font-weight:700; }
 .form-grid label { margin-top:0; }
 input,select { width:100%; border:1px solid var(--border); border-radius:8px; padding:.72rem; font:inherit; background:#fff; }
-input:disabled,select:disabled { background:#f3f4f6; color:var(--muted); }
 fieldset { border:0; padding:0; margin:1rem 0; }
 .day-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; }
 .day-option { display:flex; align-items:center; gap:.5rem; margin:0; border:1px solid var(--border); border-radius:8px; padding:.65rem; font-weight:600; }
 .day-option input { width:auto; }
 .form-error { color:#a12622; }
-.availability-message { margin:1rem 0; padding:.85rem 1rem; border:1px solid #c7d2fe; border-radius:9px; background:#eef2ff; color:#26364a; line-height:1.5; }
 .request-dialog { width:min(480px,calc(100% - 2rem)); border:0; border-radius:14px; padding:1.25rem; box-shadow:0 24px 70px rgba(23,32,51,.25); }
 .request-dialog form { display:flex; flex-direction:column; }
 .request-dialog .card-header { width:100%; }
@@ -55,10 +48,6 @@ fieldset { border:0; padding:0; margin:1rem 0; }
 .welcome-card h1 { margin:.35rem 0; font-size:2.2rem; }
 @media(max-width:760px) {
   .page-header { padding:1rem; }
-  .app-layout { grid-template-columns:1fr; gap:0; }
-  .sidebar { position:static; min-height:0; display:flex; align-items:center; gap:.35rem; overflow-x:auto; padding:.6rem 1rem; border-right:0; border-bottom:1px solid var(--border); }
-  .sidebar-label { display:none; }
-  .sidebar-link { white-space:nowrap; }
   .stats-grid { grid-template-columns:1fr; }
   .form-grid,.day-grid { grid-template-columns:1fr; }
   .card-header { align-items:flex-start; }

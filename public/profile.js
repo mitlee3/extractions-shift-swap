@@ -9,7 +9,9 @@ function showError(message) {
 function formatAvailability(value) {
   if (!value) return 'a month after your last profile update';
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'a month after your last profile update' : date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  return Number.isNaN(date.getTime())
+    ? 'a month after your last profile update'
+    : date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 function addSelectOptions(selector, values, placeholder, selected) {
   const select = document.querySelector(selector);
@@ -40,7 +42,8 @@ async function initProfile() {
         ? 'Your monthly update is available now. After saving, your next update will be available one month later.'
         : `You have already updated your profile this month. You can make your next update on ${formatAvailability(data.availableAt)}.`;
       if (!data.canUpdate) {
-        document.querySelectorAll('#profile-form input, #profile-form select, #profile-form button[type="submit"]').forEach((control) => { control.disabled = true; });
+        document.querySelectorAll('#profile-form input, #profile-form select, #profile-form button[type="submit"]')
+          .forEach((control) => { control.disabled = true; });
       }
     } else {
       document.querySelector('#first-name').value = data.firstName || '';
@@ -54,7 +57,9 @@ async function initProfile() {
       const label = document.createElement('label');
       label.className = 'day-option';
       const input = document.createElement('input');
-      input.type = 'checkbox'; input.name = 'shiftDays'; input.value = String(day.value);
+      input.type = 'checkbox';
+      input.name = 'shiftDays';
+      input.value = String(day.value);
       input.checked = (data.shiftDays || []).map(Number).includes(Number(day.value));
       label.append(input, document.createTextNode(day.label));
       days.append(label);
@@ -62,9 +67,43 @@ async function initProfile() {
     if (isUpdatePage && !data.canUpdate) {
       document.querySelectorAll('#shift-days input').forEach((input) => { input.disabled = true; });
     }
-  } catch (error) { showError(error.message); }
+  } catch (error) {
+    showError(error.message);
+  }
 }
 
 document.querySelector('#profile-form').addEventListener('submit', async (event) => {
-  event.preventEvent?.();
+  event.preventDefault();
+  document.querySelector('#form-error').hidden = true;
+  const shiftDays = [...document.querySelectorAll('input[name="shiftDays"]:checked')]
+    .map((input) => Number(input.value));
+
+  try {
+    const response = await fetch('/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        csrfToken,
+        firstName: document.querySelector('#first-name').value,
+        lastName: document.querySelector('#last-name').value,
+        position: document.querySelector('#position').value,
+        shiftNumber: document.querySelector('#shift-number').value,
+        shiftDays,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      if (result.availableAt) {
+        const availability = document.querySelector('#availability-message');
+        availability.hidden = false;
+        availability.textContent = `You can make your next profile update on ${formatAvailability(result.availableAt)}.`;
+      }
+      throw new Error(result.error || 'Could not save your profile.');
+    }
+    window.location.assign(result.redirect);
+  } catch (error) {
+    showError(error.message);
+  }
 });
+
+initProfile();

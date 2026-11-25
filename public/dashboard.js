@@ -75,10 +75,15 @@ function renderRequests(allRequests) {
     const requesterPosition = request.requester_position || request.position;
     const requestedDay = weekdayFromDate(request.person_requesting_on);
     const requesterDays = (request.requester_shift_days || request.requester_days || []).map(Number);
-    const dayCompatible = requestedDay !== null && userWorkDays.length > 0 && !userWorkDays.includes(requestedDay)
-      && requesterDays.length > 0 && !requesterDays.every((day) => userWorkDays.includes(day));
-    const positionCompatible = Boolean(userPosition && requesterPosition && userPosition === requesterPosition);
-    const compatible = dayCompatible && positionCompatible;
+    // Collect every reason this request does not fit your schedule; it is compatible only when there are none.
+    const reasons = [];
+    if (requestedDay === null) reasons.push('Requested date is unavailable');
+    else if (userWorkDays.includes(requestedDay)) reasons.push(`You already work ${weekdays[requestedDay].full}s`);
+    if (!userWorkDays.some((day) => !requesterDays.includes(day))) reasons.push('You have no workday they have off to offer in return');
+    if (!(userPosition && requesterPosition && userPosition === requesterPosition)) {
+      reasons.push(userPosition && requesterPosition ? `Position not compatible (you: ${userPosition}, them: ${requesterPosition})` : 'Position not compatible');
+    }
+    const compatible = reasons.length === 0;
     const card = document.createElement('article');
     card.className = `request-bubble ${compatible ? 'compatible' : 'incompatible'}`;
     appendText(card, 'p', 'request-kicker', 'Day off requested');
@@ -105,11 +110,7 @@ function renderRequests(allRequests) {
     const footer = document.createElement('div');
     footer.className = 'request-compatibility';
     appendText(footer, 'strong', '', compatible ? 'Compatible with your schedule.' : 'Not compatible with your schedule.');
-    if (!compatible) {
-      let reason = 'Day of week not compatible';
-      if (dayCompatible && !positionCompatible) reason = 'Position not compatible';
-      appendText(footer, 'span', 'compatibility-reason', reason);
-    }
+    for (const reason of reasons) appendText(footer, 'span', 'compatibility-reason', reason);
     card.append(footer);
 
     // Only compatible requests receive a button to open the offer-date prompt.
@@ -167,10 +168,17 @@ document.querySelector('#request-form').addEventListener('submit', async (event)
   event.preventDefault();
   const error = document.querySelector('#request-error');
   error.hidden = true;
+  const date = document.querySelector('#request-date').value;
+  // Only days the user normally works can be requested off.
+  if (!userWorkDays.includes(weekdayFromDate(date))) {
+    error.textContent = 'You can only request a day off that you normally work.';
+    error.hidden = false;
+    return;
+  }
   try {
     const response = await fetch('/api/shift-requests', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date: document.querySelector('#request-date').value }),
+      body: JSON.stringify({ date }),
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Could not create the request.');
@@ -205,6 +213,12 @@ document.querySelector('#offer-form').addEventListener('submit', async (event) =
     await loadDashboard();
   } catch (err) { error.textContent = err.message; error.hidden = false; }
 });
+
+// Past dates cannot be requested or offered; stop the date pickers at today (the server enforces this too).
+const now = new Date();
+const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+document.querySelector('#request-date').min = localToday;
+document.querySelector('#offer-date').min = localToday;
 
 // Replace the former summary boxes with the compact open-requests heading.
 setupRequestHeading();

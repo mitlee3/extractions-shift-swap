@@ -87,7 +87,8 @@ function renderRequests(allRequests) {
     const card = document.createElement('article');
     card.className = `request-bubble ${compatible ? 'compatible' : 'incompatible'}`;
     appendText(card, 'p', 'request-kicker', 'Day off requested');
-    appendText(card, 'h4', 'request-date', formatDate(request.person_requesting_on));
+    const requestedDayName = requestedDay === null ? '' : `${weekdays[requestedDay].full}, `;
+    appendText(card, 'h4', 'request-date', `${requestedDayName}${formatDate(request.person_requesting_on)}`);
     appendText(card, 'p', 'requester-name', request.requester_name || 'Team member');
     appendText(card, 'p', 'request-detail', requesterPosition ? `Position: ${requesterPosition}` : 'Position details unavailable');
 
@@ -135,6 +136,22 @@ function openOfferDialog(request) {
   document.querySelector('#offer-dialog').showModal();
 }
 
+// Show the Google profile photo next to the greeting, falling back to initials if there is none or it fails to load.
+function showAvatar(user) {
+  const avatar = document.querySelector('#avatar');
+  const initials = String(user.name || user.email || '').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('');
+  avatar.textContent = initials;
+  if (user.picture && /^https:\/\//.test(user.picture)) {
+    const img = document.createElement('img');
+    img.alt = '';
+    img.referrerPolicy = 'no-referrer'; // Google photo URLs can refuse requests that send a referrer.
+    img.addEventListener('error', () => { avatar.textContent = initials; });
+    img.src = user.picture;
+    avatar.replaceChildren(img);
+  }
+  avatar.hidden = false;
+}
+
 // Load the signed-in account, open requests, and current profile schedule before rendering the dashboard.
 async function loadDashboard() {
   try {
@@ -152,6 +169,7 @@ async function loadDashboard() {
       currentUser.position = settings.position || currentUser.position;
     }
     document.querySelector('#greeting').textContent = `Hello, ${currentUser.name}`;
+    showAvatar(currentUser);
     renderRequests(requests);
   } catch (error) {
     document.querySelector('#requests-message').textContent = error.message;

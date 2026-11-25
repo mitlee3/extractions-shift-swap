@@ -16,6 +16,9 @@ body { margin:0; min-height:100vh; font-family:system-ui,-apple-system,BlinkMacS
 .page-header { min-height:88px; display:flex; align-items:center; justify-content:space-between; padding:1rem 2.5rem; background:rgba(255,255,255,.92); border-bottom:1px solid var(--border); }
 .page-header h1 { margin:.15rem 0 0; font-size:1.55rem; }
 .sign-out { color:var(--muted); text-decoration:none; font-weight:700; }
+.page-header .sign-out { flex:none; padding:.5rem .95rem; border:1px solid var(--border); border-radius:8px; background:#fff; color:var(--text); } .page-header .sign-out:hover { background:var(--primary-soft); }
+.greeting-row { display:flex; align-items:center; gap:.65rem; margin-top:.15rem; } .greeting-row h1 { margin:0; }
+.avatar { flex:none; width:36px; height:36px; border-radius:50%; overflow:hidden; display:inline-grid; place-items:center; background:var(--primary-soft); color:var(--primary); font-size:.85rem; font-weight:800; } .avatar img { width:100%; height:100%; object-fit:cover; }
 .section-kicker { margin:0; color:#5268c9; font-size:.72rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
 .dashboard,.profile-layout,.settings-layout { width:min(1120px,calc(100% - 2rem)); margin:2rem auto 3rem; }
 .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:1.25rem; }

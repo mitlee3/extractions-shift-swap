@@ -5,14 +5,14 @@
   "description": "Google sign-in starter for Cloud Run",
   "main": "server.js",
   "scripts": {
-    "start": "node -r ./schedule-schema-compat.js -r ./requester-current-schedule.js -r ./users-page-preload.js server.js"
+    "start": "node -r ./requester-current-schedule.js -r ./users-page-preload.js server.js"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "cookie-session": "^2.1.0",
-    "express": "^5.1.0",
+    "express": "^5.3.0",
     "google-auth-library": "^10.3.0",
     "pg": "^8.16.3"
   }

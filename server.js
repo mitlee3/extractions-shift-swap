@@ -79,11 +79,9 @@ function userFromRow(row, picture = null) {
 function currentUserSelect(whereClause) {
   return `
     SELECT u.id, u.email, u.first_name, u.last_name, u.profile_last_updated_at,
-           h.position, h.shift_number, c.schedule_id
+           c.position, c.shift_number, c.schedule_id
     FROM "User" u
     LEFT JOIN "UserScheduleCurrent" c ON c.user_id = u.id
-    LEFT JOIN "UserScheduleHistory" h
-      ON h.schedule_id = c.schedule_id AND h.user_id = c.user_id
     ${whereClause}
   `;
 }
@@ -175,7 +173,7 @@ app.post('/api/profile', requireUser, requireDatabase, async (req, res, next) =>
     const schedule = await client.query('INSERT INTO "UserScheduleHistory" (user_id, shift_number, position) VALUES ($1, $2, $3) RETURNING schedule_id', [row.id, shiftNumber, position]);
     const scheduleId = schedule.rows[0].schedule_id;
     for (const day of shiftDays) await client.query('INSERT INTO "UserScheduleDays" (schedule_id, day_of_week) VALUES ($1, $2)', [scheduleId, day]);
-    await client.query('INSERT INTO "UserScheduleCurrent" (user_id, schedule_id) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET schedule_id = EXCLUDED.schedule_id, created_at = CURRENT_TIMESTAMP', [row.id, scheduleId]);
+    await client.query('INSERT INTO "UserScheduleCurrent" (user_id, position, shift_number, schedule_id) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id) DO UPDATE SET position = EXCLUDED.position, shift_number = EXCLUDED.shift_number, schedule_id = EXCLUDED.schedule_id, created_at = CURRENT_TIMESTAMP', [row.id, position, shiftNumber, scheduleId]);
     await client.query('COMMIT');
     row.schedule_id = scheduleId; row.position = position; row.shift_number = shiftNumber;
     req.session.user = userFromRow(row, req.session.user.picture || null);
@@ -230,7 +228,7 @@ app.post('/api/profile-settings', requireProfile, requireDatabase, async (req, r
       const schedule = await client.query('INSERT INTO "UserScheduleHistory" (user_id, shift_number, position) VALUES ($1, $2, $3) RETURNING schedule_id', [row.id, shiftNumber, position]);
       const scheduleId = schedule.rows[0].schedule_id;
       for (const day of shiftDays) await client.query('INSERT INTO "UserScheduleDays" (schedule_id, day_of_week) VALUES ($1, $2)', [scheduleId, day]);
-      await client.query('UPDATE "UserScheduleCurrent" SET schedule_id = $2, created_at = CURRENT_TIMESTAMP WHERE user_id = $1', [row.id, scheduleId]);
+      await client.query('UPDATE "UserScheduleCurrent" SET schedule_id = $2, position = $3, shift_number = $4, created_at = CURRENT_TIMESTAMP WHERE user_id = $1', [row.id, scheduleId, position, shiftNumber]);
     }
     await client.query('COMMIT');
     req.session.user = { ...req.session.user, name: `${firstName} ${lastName}`.trim(), position, shiftNumber };

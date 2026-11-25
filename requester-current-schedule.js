@@ -1,5 +1,5 @@
 // Add current-schedule details to shift-request rows using UserScheduleCurrent.
-// This query wrapper runs after the legacy compatibility wrapper and changes only the dashboard request query.
+// This query wrapper changes only the dashboard request query.
 const { Pool, Client } = require('pg');
 
 function addRequesterCurrentSchedule(query) {

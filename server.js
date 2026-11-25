@@ -26,6 +26,10 @@ const profileOptions = {
 
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
+// "Today" for date rules is taken in the team's time zone, not the server's (Cloud Run runs in UTC).
+const APP_TIMEZONE = process.env.APP_TIMEZONE || 'America/Los_Angeles';
+const todayFormatter = new Intl.DateTimeFormat('en-CA', { timeZone: APP_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' }); // throws at startup if the zone is invalid
+function appToday() { return todayFormatter.format(new Date()); } // YYYY-MM-DD
 const oauthClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.OAUTH_REDIRECT_URL);
 const db = process.env.DATABASE_URL ? new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -71,14 +75,12 @@ function requireDatabase(req, res, next) {
 }
 function userFromRow(row, picture = null) {
   return {
+    // Identity and display name only. Position, shift and schedule can change, so they are read from the database when needed.
     id: row.id,
     email: row.email,
     name: `${row.first_name} ${row.last_name}`.trim(),
     picture,
     profileComplete: Boolean(row.schedule_id),
-    position: row.position || null,
-    shiftNumber: row.shift_number || null,
-    scheduleId: row.schedule_id || null,
   };
 }
 function currentUserSelect(whereClause) {
@@ -354,15 +356,37 @@ app.post('/api/profile-settings', requireProfile, requireDatabase, async (req, r
       await client.query('UPDATE "UserScheduleCurrent" SET schedule_id = $2, position = $3, shift_number = $4, created_at = CURRENT_TIMESTAMP WHERE user_id = $1', [row.id, scheduleId, position, shiftNumber]);
     }
     await client.query('COMMIT');
-    req.session.user = { ...req.session.user, name: `${firstName} ${lastName}`.trim(), position, shiftNumber };
+    req.session.user = { ...req.session.user, name: `${firstName} ${lastName}`.trim() };
     delete req.session.profileUpdateCsrfToken;
     return res.json({ success: true });
   } catch (err) { await client.query('ROLLBACK').catch(() => {}); return next(err); } finally { client.release(); }
 });
 
-app.get('/me', requireUser, (req, res) => res.json(req.session.user));
+app.get('/me', requireUser, async (req, res, next) => {
+  const { id, email, name, picture, profileComplete } = req.session.user;
+  // Users who have not finished their profile have no database row yet; their Google details live in the session.
+  if (!id || !db) return res.json(req.session.user);
+  try {
+    const result = await db.query(`${currentUserSelect('WHERE u.id = $1 LIMIT 1')}`, [id]);
+    const row = result.rows[0];
+    if (!row) return res.json(req.session.user);
+    res.json({
+      id, email, name, picture, profileComplete,
+      position: row.position || null,
+      shiftNumber: row.shift_number || null,
+      scheduleId: row.schedule_id || null,
+    });
+  } catch (err) { next(err); }
+});
+// Active offers whose offered date has passed become Expired. Run lazily whenever offers matter, since Cloud Run has no always-on timer.
+async function expirePastOffers(today) {
+  await db.query(`UPDATE "ShiftOffers" SET status = 'Expired' WHERE status = 'Active' AND person_offering_on < $1::date`, [today]);
+}
+
 app.get('/api/shift-requests', requireProfile, requireDatabase, async (req, res, next) => {
   try {
+    const today = appToday();
+    await expirePastOffers(today);
     const result = await db.query(`
       SELECT r.id, r.person_requesting_on, NULL::date AS person_offering_on, r.request_opened_at AS submitted_at,
              requester.first_name || ' ' || requester.last_name AS requester_name,
@@ -371,6 +395,7 @@ app.get('/api/shift-requests', requireProfile, requireDatabase, async (req, res,
              ARRAY(SELECT day.day_of_week FROM "UserScheduleDays" day WHERE day.schedule_id = requester_current.schedule_id ORDER BY day.day_of_week)::integer[] AS requester_shift_days
       FROM "ShiftSwapsOpen" r JOIN "User" requester ON requester.id = r.person_requesting
       JOIN "UserScheduleCurrent" requester_current ON requester_current.user_id = requester.id
+      WHERE r.person_requesting_on >= $1::date
       UNION ALL
       SELECT h.id, h.person_requesting_on, h.person_offering_on, h.submitted_at,
              requester.first_name || ' ' || requester.last_name AS requester_name,
@@ -382,26 +407,86 @@ app.get('/api/shift-requests', requireProfile, requireDatabase, async (req, res,
       JOIN "UserScheduleCurrent" requester_current ON requester_current.user_id = requester.id
       JOIN "User" offering ON offering.id = h.person_offering
       ORDER BY submitted_at DESC NULLS LAST, id DESC
-    `);
+    `, [today]);
     res.json(result.rows);
   } catch (err) { next(err); }
 });
+// Convert a YYYY-MM-DD date to the Monday-zero weekday stored in UserScheduleDays (null if invalid).
+function weekdayFromIsoDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  if (date.getUTCMonth() !== Number(match[2]) - 1 || date.getUTCDate() !== Number(match[3])) return null;
+  return (date.getUTCDay() + 6) % 7;
+}
+// A user's recurring workdays from their current schedule (Monday = 0).
+async function currentWorkDays(userId) {
+  const result = await db.query('SELECT d.day_of_week FROM "UserScheduleCurrent" c JOIN "UserScheduleDays" d ON d.schedule_id = c.schedule_id WHERE c.user_id = $1', [userId]);
+  return result.rows.map((row) => Number(row.day_of_week));
+}
+
 app.post('/api/shift-requests', requireProfile, requireDatabase, async (req, res, next) => {
   const date = typeof req.body.date === 'string' ? req.body.date : '';
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Choose a valid date.' });
+  const requestedDay = weekdayFromIsoDate(date);
+  if (requestedDay === null) return res.status(400).json({ error: 'Choose a valid date.' });
+  if (date < appToday()) return res.status(400).json({ error: 'You cannot request a date in the past.' });
   try {
-    const result = await db.query('INSERT INTO "ShiftSwapsOpen" (person_requesting, requester_schedule_id, person_requesting_on) VALUES ($1, $2, $3) RETURNING id, person_requesting_on, request_opened_at', [req.session.user.id, req.session.user.scheduleId, date]);
+    // A swap can only be requested for a day the requester normally works.
+    if (!(await currentWorkDays(req.session.user.id)).includes(requestedDay)) return res.status(400).json({ error: 'You can only request a day off that you normally work.' });
+    // Record the requester's current schedule version, read in the same statement so it is never stale.
+    const result = await db.query(`
+      INSERT INTO "ShiftSwapsOpen" (person_requesting, requester_schedule_id, person_requesting_on)
+      SELECT c.user_id, c.schedule_id, $2::date FROM "UserScheduleCurrent" c WHERE c.user_id = $1::uuid
+      RETURNING id, person_requesting_on, request_opened_at
+    `, [req.session.user.id, date]);
+    if (!result.rows[0]) return res.status(409).json({ error: 'Complete your profile before requesting a swap.' });
     res.status(201).json(result.rows[0]);
   } catch (err) { next(err); }
 });
 app.post('/api/shift-requests/:id/offers', requireProfile, requireDatabase, async (req, res, next) => {
   const requestId = Number(req.params.id);
   const date = typeof req.body.date === 'string' ? req.body.date : '';
-  if (!Number.isInteger(requestId) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Choose a valid request and date.' });
+  const offeredDay = weekdayFromIsoDate(date);
+  if (!Number.isInteger(requestId) || offeredDay === null) return res.status(400).json({ error: 'Choose a valid request and date.' });
+  const today = appToday();
+  if (date < today) return res.status(400).json({ error: 'You cannot offer a date in the past.' });
   try {
-    const result = await db.query('INSERT INTO "ShiftOffers" (corresponding_request_id, person_offering, offering_schedule_id, person_offering_on) VALUES ($1, $2, $3, $4) RETURNING id', [requestId, req.session.user.id, req.session.user.scheduleId, date]);
+    await expirePastOffers(today);
+    const requestResult = await db.query(`
+      SELECT r.person_requesting, EXTRACT(ISODOW FROM r.person_requesting_on)::int - 1 AS requested_day,
+             r.person_requesting_on < $3::date AS request_in_past,
+             EXISTS (SELECT 1 FROM "ShiftOffers" o WHERE o.corresponding_request_id = r.id AND o.person_offering = $2::uuid) AS already_offered,
+             requester_current.position AS requester_position,
+             (SELECT c.position FROM "UserScheduleCurrent" c WHERE c.user_id = $2::uuid) AS offerer_position
+      FROM "ShiftSwapsOpen" r
+      LEFT JOIN "UserScheduleCurrent" requester_current ON requester_current.user_id = r.person_requesting
+      WHERE r.id = $1
+    `, [requestId, req.session.user.id, today]);
+    const request = requestResult.rows[0];
+    if (!request || request.request_in_past) return res.status(404).json({ error: 'This request is no longer open.' });
+    if (request.already_offered) return res.status(409).json({ error: "You've already made an offer on this request" });
+    const [offererDays, requesterDays] = await Promise.all([currentWorkDays(req.session.user.id), currentWorkDays(request.person_requesting)]);
+    // The offerer must be off on the requested day, and must normally work the offered day while the requester does not.
+    // Report every rule the offer breaks, not just the first.
+    const problems = [];
+    if (offererDays.includes(request.requested_day)) problems.push('You can only offer on a request for a day you do not normally work.');
+    if (!offererDays.includes(offeredDay)) problems.push('Choose a date you normally work.');
+    if (requesterDays.includes(offeredDay)) problems.push('The requesting employee is normally scheduled on that day. Choose a different date.');
+    if (!request.offerer_position || request.offerer_position !== request.requester_position) problems.push('Your position must match the requesting employee\'s position.');
+    if (problems.length) return res.status(400).json({ error: problems.join(' '), errors: problems });
+    // Record the offerer's current schedule version, read in the same statement so it is never stale.
+    const result = await db.query(`
+      INSERT INTO "ShiftOffers" (corresponding_request_id, person_offering, offering_schedule_id, person_offering_on)
+      SELECT $1::int, c.user_id, c.schedule_id, $3::date FROM "UserScheduleCurrent" c WHERE c.user_id = $2::uuid
+      RETURNING id
+    `, [requestId, req.session.user.id, date]);
+    if (!result.rows[0]) return res.status(409).json({ error: 'Complete your profile before making an offer.' });
     res.status(201).json(result.rows[0]);
-  } catch (err) { next(err); }
+  } catch (err) {
+    // ShiftOffers allows one offer per person per request (unique constraint violation = 23505).
+    if (err.code === '23505') return res.status(409).json({ error: "You've already made an offer on this request" });
+    next(err);
+  }
 });
 app.post('/logout', (req, res) => { req.session = null; res.redirect('/'); });
 app.get('/logout', (req, res) => { req.session = null; res.redirect('/'); });

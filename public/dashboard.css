@@ -1,6 +1,8 @@
 /* Theme tokens keep colors consistent across dashboard, profile, and settings. */
 :root { --bg:#f3f6fb; --panel:#fff; --border:#dfe5ef; --text:#172033; --muted:#647087; --primary:#26364a; --primary-soft:#edf1f7; --success-bg:#dcfce7; --success-text:#166534; --warning-bg:#fef3c7; --warning-text:#854d0e; --danger-bg:#fee2e2; --danger-text:#991b1b; --neutral-bg:#eef2f7; --neutral-text:#526173; }
 * { box-sizing:border-box; }
+/* Keep the hidden attribute working on elements whose class sets display (e.g. .empty-detail uses grid). */
+[hidden] { display:none !important; }
 body { margin:0; min-height:100vh; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(135deg,#f5f7fa,#edf2f8); color:var(--text); }
 .app-shell { min-height:100vh; display:grid; grid-template-columns:220px 1fr; }
 .sidebar { position:sticky; top:0; height:100vh; display:flex; flex-direction:column; padding:1.25rem 1rem; background:#202e40; color:#fff; }

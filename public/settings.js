@@ -48,10 +48,10 @@ async function initSettings() {
       days.append(label);
     }
 
-    // Explain the 30-day update limit and disable schedule edits while the limit is active.
+    // Explain the 7-day update limit and disable schedule edits while the limit is active.
     const windowElement = document.querySelector('#update-window');
     if (!data.canUpdate) {
-      windowElement.textContent = `Profile updates are limited to once every 30 days. You can update it again on ${formatDate(data.nextUpdateDate)}.`;
+      windowElement.textContent = `Profile updates are limited to once every 7 days. You can update it again on ${formatDate(data.nextUpdateDate)}.`;
       windowElement.classList.add('locked');
       document.querySelector('#settings-fields').disabled = true;
       document.querySelector('#save-profile').disabled = true;

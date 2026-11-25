@@ -308,9 +308,12 @@ app.get('/api/profile-settings', requireProfile, requireDatabase, async (req, re
     const row = userResult.rows[0];
     if (!row) return res.status(404).json({ error: 'Profile not found' });
     const daysResult = await db.query('SELECT day_of_week FROM "UserScheduleDays" WHERE schedule_id = $1 ORDER BY day_of_week', [row.schedule_id]);
-    const lastUpdate = row.profile_last_updated_at ? new Date(row.profile_last_updated_at) : null;
-    const nextUpdateDate = lastUpdate ? new Date(lastUpdate.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
-    const canUpdate = !nextUpdateDate || nextUpdateDate.getTime() <= Date.now();
+    // TESTING: 7-day profile update limit disabled. Restore these three lines and remove the two below before release.
+    // const lastUpdate = row.profile_last_updated_at ? new Date(row.profile_last_updated_at) : null;
+    // const nextUpdateDate = lastUpdate ? new Date(lastUpdate.getTime() + 7 * 24 * 60 * 60 * 1000) : null;
+    // const canUpdate = !nextUpdateDate || nextUpdateDate.getTime() <= Date.now();
+    const nextUpdateDate = null;
+    const canUpdate = true;
     res.json({ csrfToken: req.session.profileUpdateCsrfToken, firstName: row.first_name, lastName: row.last_name, position: row.position, shiftNumber: row.shift_number, shiftDays: daysResult.rows.map((item) => item.day_of_week), options: profileOptions, canUpdate, nextUpdateDate: nextUpdateDate?.toISOString() || null });
   } catch (err) { next(err); }
 });
@@ -334,12 +337,13 @@ app.post('/api/profile-settings', requireProfile, requireDatabase, async (req, r
     if (!row) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Profile not found' }); }
     const daysResult = await client.query('SELECT day_of_week FROM "UserScheduleDays" WHERE schedule_id = $1 ORDER BY day_of_week', [row.schedule_id]);
     const oldDays = daysResult.rows.map((item) => item.day_of_week);
-    const lastUpdate = row.profile_last_updated_at ? new Date(row.profile_last_updated_at) : null;
-    const nextUpdateDate = lastUpdate ? new Date(lastUpdate.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
-    if (nextUpdateDate && nextUpdateDate.getTime() > Date.now()) {
-      await client.query('ROLLBACK');
-      return res.status(409).json({ error: `Profile updates are available again ${nextUpdateDate.toLocaleDateString()}.`, nextUpdateDate: nextUpdateDate.toISOString() });
-    }
+    // TESTING: 7-day profile update limit disabled. Uncomment this block before release.
+    // const lastUpdate = row.profile_last_updated_at ? new Date(row.profile_last_updated_at) : null;
+    // const nextUpdateDate = lastUpdate ? new Date(lastUpdate.getTime() + 7 * 24 * 60 * 60 * 1000) : null;
+    // if (nextUpdateDate && nextUpdateDate.getTime() > Date.now()) {
+    //   await client.query('ROLLBACK');
+    //   return res.status(409).json({ error: `Profile updates are available again ${nextUpdateDate.toLocaleDateString()}.`, nextUpdateDate: nextUpdateDate.toISOString() });
+    // }
 
     await client.query('UPDATE "User" SET first_name = $2, last_name = $3, profile_last_updated_at = CURRENT_TIMESTAMP WHERE id = $1', [row.id, firstName, lastName]);
     const scheduleChanged = row.position !== position || row.shift_number !== shiftNumber || JSON.stringify(oldDays) !== JSON.stringify(shiftDays);
